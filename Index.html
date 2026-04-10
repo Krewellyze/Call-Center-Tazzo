@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TAZZO | Call Center V1.1</title>
+
+<link href="https://fonts.cdnfonts.com/css/bring-race" rel="stylesheet">
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+
+body{
+    min-height:100vh;
+    background:linear-gradient(135deg,#180000,#8b0000,#1a0000);
+    background-size:400% 400%;
+    animation:bgMove 10s ease infinite;
+    padding:20px;
+    color:#fff;
+    font-family:Arial,sans-serif;
+}
+
+@keyframes bgMove{
+    0%{background-position:0% 50%}
+    50%{background-position:100% 50%}
+    100%{background-position:0% 50%}
+}
+
+.container{
+    max-width:500px;
+    margin:auto;
+}
+
+.logo{
+    text-align:center;
+    font-size:42px;
+    margin-bottom:20px;
+    font-family:'Bring Race',sans-serif;
+    color:#fff;
+    text-shadow:0 0 10px rgba(255,0,0,.5);
+}
+
+.card{
+    background:rgba(255,255,255,.08);
+    border-radius:20px;
+    padding:20px;
+    margin-bottom:18px;
+    backdrop-filter:blur(12px);
+    box-shadow:0 0 20px rgba(255,0,0,.18);
+}
+
+input,select,button{
+    width:100%;
+    padding:14px;
+    margin-bottom:12px;
+    border:none;
+    border-radius:12px;
+    font-size:16px;
+}
+
+input,select{
+    background:rgba(0,0,0,.35);
+    color:#fff;
+}
+
+button{
+    background:linear-gradient(90deg,#ff0000,#8b0000);
+    color:#fff;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+button:hover{
+    opacity:.95;
+}
+
+.item{
+    padding:12px;
+    margin:8px 0;
+    background:rgba(255,255,255,.05);
+    border-radius:10px;
+    line-height:1.5;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<div class="logo">TAZZO</div>
+
+<div class="card">
+<h3>Nova ligação</h3>
+
+<select id="vendedor">
+<option>Joabe</option>
+<option>João Gabriel</option>
+<option>Fábio</option>
+<option>Caio Henrique</option>
+</select>
+
+<input id="numero" placeholder="Número">
+<input id="cliente" placeholder="Nome do cliente">
+<input id="cpfCnpj" placeholder="CPF / CNPJ">
+
+<select id="atendeu">
+<option>Sim</option>
+<option>Não</option>
+</select>
+
+<select id="venda">
+<option>Sim</option>
+<option>Não</option>
+</select>
+
+<button onclick="salvarLigacao()">Cadastrar ligação</button>
+</div>
+
+<div class="card">
+<h3>Últimas ligações</h3>
+<div id="lista"></div>
+</div>
+
+</div>
+
+<script>
+const API_URL="https://script.google.com/macros/s/AKfycbxpj0nN8Hv6F7fAr8CgC9Vp9IQgEYkT6otLUCwJMK-JRty1u0H1EjjBlKBJ3tpw4hxs/exec";
+
+async function salvarLigacao(){
+    const dados={
+        vendedor:document.getElementById("vendedor").value,
+        numero:document.getElementById("numero").value.trim(),
+        cliente:document.getElementById("cliente").value.trim(),
+        cpfCnpj:document.getElementById("cpfCnpj").value.trim(),
+        atendeu:document.getElementById("atendeu").value,
+        venda:document.getElementById("venda").value
+    };
+
+    if(!dados.numero || !dados.cliente){
+        alert("Preencha número e nome do cliente.");
+        return;
+    }
+
+    try{
+        const response=await fetch(API_URL,{
+            method:"POST",
+            body:JSON.stringify(dados)
+        });
+
+        const resultado=await response.json();
+
+        if(resultado.status==="ok"){
+            limparCampos();
+            carregarLigacoes();
+            alert("Ligação salva com sucesso.");
+        }else{
+            alert("Erro ao salvar ligação.");
+        }
+
+    }catch(error){
+        console.error(error);
+        alert("Erro de conexão.");
+    }
+}
+
+function limparCampos(){
+    document.getElementById("numero").value="";
+    document.getElementById("cliente").value="";
+    document.getElementById("cpfCnpj").value="";
+    document.getElementById("atendeu").value="Sim";
+    document.getElementById("venda").value="Sim";
+}
+
+async function carregarLigacoes(){
+    try{
+        const response=await fetch(API_URL);
+        const dados=await response.json();
+
+        const lista=document.getElementById("lista");
+
+        lista.innerHTML=dados
+            .slice(1)
+            .reverse()
+            .slice(0,10)
+            .map(item=>`
+                <div class="item">
+                    <strong>${item[1]}</strong> — ${item[3]}<br>
+                    Número: ${item[2]}<br>
+                    CPF/CNPJ: ${item[4]}<br>
+                    Atendeu: ${item[5]}<br>
+                    Venda: ${item[6]}<br>
+                    <small>${item[0]}</small>
+                </div>
+            `).join("");
+
+    }catch(error){
+        console.error(error);
+    }
+}
+
+/* atualização em tempo real a cada 2 segundos */
+setInterval(carregarLigacoes,2000);
+
+carregarLigacoes();
+</script>
+
+</body>
+</html>
