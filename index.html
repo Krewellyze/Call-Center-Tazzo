@@ -3,53 +3,50 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TAZZO | Call Center V1.1</title>
+<title>TAZZO | Call Center V2.0 Premium</title>
 
 <link href="https://fonts.cdnfonts.com/css/bring-race" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 
 body{
     min-height:100vh;
-    background:linear-gradient(135deg,#180000,#8b0000,#1a0000);
-    background-size:400% 400%;
-    animation:bgMove 10s ease infinite;
+    background:#000;
     padding:20px;
     color:#fff;
     font-family:Arial,sans-serif;
 }
 
-@keyframes bgMove{
-    0%{background-position:0% 50%}
-    50%{background-position:100% 50%}
-    100%{background-position:0% 50%}
-}
-
-.container{
-    max-width:500px;
-    margin:auto;
-}
+.container{max-width:500px;margin:auto}
 
 .logo{
     text-align:center;
     font-size:42px;
     margin-bottom:20px;
     font-family:'Bring Race',sans-serif;
-    color:#fff;
-    text-shadow:0 0 10px rgba(255,0,0,.5);
+}
+
+.white{color:#fff}
+.red{
+    color:#ff0000;
+    text-shadow:
+        0 0 5px #ff0000,
+        0 0 10px #ff0000,
+        0 0 20px #ff0000;
 }
 
 .card{
-    background:rgba(255,255,255,.08);
-    border-radius:20px;
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,0,0,.25);
+    border-radius:18px;
     padding:20px;
     margin-bottom:18px;
-    backdrop-filter:blur(12px);
-    box-shadow:0 0 20px rgba(255,0,0,.18);
+    box-shadow:0 0 15px rgba(255,0,0,.15);
 }
 
-input,select,button{
+input,select,button,textarea{
     width:100%;
     padding:14px;
     margin-bottom:12px;
@@ -58,39 +55,38 @@ input,select,button{
     font-size:16px;
 }
 
-input,select{
-    background:rgba(0,0,0,.35);
+input,select,textarea{
+    background:#111;
     color:#fff;
 }
 
 button{
-    background:linear-gradient(90deg,#ff0000,#8b0000);
+    background:linear-gradient(90deg,#700000,#ff0000);
     color:#fff;
     font-weight:bold;
     cursor:pointer;
 }
 
-button:hover{
-    opacity:.95;
-}
-
 .item{
     padding:12px;
-    margin:8px 0;
-    background:rgba(255,255,255,.05);
-    border-radius:10px;
-    line-height:1.5;
+    border-radius:12px;
+    background:#111;
+    margin-bottom:10px;
 }
+
+#painelGerente{display:none}
 </style>
 </head>
 <body>
 
 <div class="container">
 
-<div class="logo">TAZZO</div>
+<div class="logo">
+<span class="white">TA</span><span class="red">ZZ</span><span class="white">O</span>
+</div>
 
 <div class="card">
-<h3>Nova ligação</h3>
+<h3>Registrar Ligação</h3>
 
 <select id="vendedor">
 <option>Joabe</option>
@@ -99,25 +95,38 @@ button:hover{
 <option>Caio Henrique</option>
 </select>
 
-<input id="numero" placeholder="Número">
-<input id="cliente" placeholder="Nome do cliente">
-<input id="cpfCnpj" placeholder="CPF / CNPJ">
+<input type="text" id="cliente" placeholder="Nome do cliente">
+<input type="text" id="telefone" placeholder="Telefone">
+<input type="text" id="cpfcnpj" placeholder="CPF ou CNPJ">
 
-<select id="atendeu">
-<option>Sim</option>
-<option>Não</option>
+<select id="atendida">
+<option value="SIM">Ligação atendida: SIM</option>
+<option value="NAO">Ligação atendida: NÃO</option>
 </select>
 
-<select id="venda">
-<option>Sim</option>
-<option>Não</option>
+<select id="converteu">
+<option value="SIM">Converteu em venda: SIM</option>
+<option value="NAO">Converteu em venda: NÃO</option>
 </select>
 
-<button onclick="salvarLigacao()">Cadastrar ligação</button>
+<textarea id="obs" placeholder="Observações"></textarea>
+
+<button onclick="registrarLigacao()">Registrar ligação</button>
+</div>
+
+<button onclick="abrirPainelGerente()">Painel do Gerente</button>
+
+<div id="painelGerente" class="card">
+<h3>Painel Gerencial</h3>
+
+<div id="resumo"></div>
+
+<button onclick="gerarPDF()">Gerar Relatório PDF</button>
+<button onclick="logoutGerente()">Sair</button>
 </div>
 
 <div class="card">
-<h3>Últimas ligações</h3>
+<h3>Últimas Ligações</h3>
 <div id="lista"></div>
 </div>
 
@@ -125,83 +134,124 @@ button:hover{
 
 <script>
 const API_URL="https://script.google.com/macros/s/AKfycbxpj0nN8Hv6F7fAr8CgC9Vp9IQgEYkT6otLUCwJMK-JRty1u0H1EjjBlKBJ3tpw4hxs/exec";
+const SENHA_GERENTE="gerentazzo";
 
-async function salvarLigacao(){
-    const dados={
+let registros=[];
+
+function abrirPainelGerente(){
+    const senha=prompt("Digite a senha do gerente:");
+
+    if(senha===SENHA_GERENTE){
+        localStorage.setItem("gerente","true");
+        document.getElementById("painelGerente").style.display="block";
+        atualizarResumo();
+    }else{
+        alert("Senha incorreta");
+    }
+}
+
+function verificarSessao(){
+    if(localStorage.getItem("gerente")==="true"){
+        document.getElementById("painelGerente").style.display="block";
+    }
+}
+
+function logoutGerente(){
+    localStorage.removeItem("gerente");
+    document.getElementById("painelGerente").style.display="none";
+}
+
+async function registrarLigacao(){
+    const payload={
         vendedor:document.getElementById("vendedor").value,
-        numero:document.getElementById("numero").value.trim(),
-        cliente:document.getElementById("cliente").value.trim(),
-        cpfCnpj:document.getElementById("cpfCnpj").value.trim(),
-        atendeu:document.getElementById("atendeu").value,
-        venda:document.getElementById("venda").value
+        cliente:document.getElementById("cliente").value,
+        telefone:document.getElementById("telefone").value,
+        cpfcnpj:document.getElementById("cpfcnpj").value,
+        atendida:document.getElementById("atendida").value,
+        converteu:document.getElementById("converteu").value,
+        obs:document.getElementById("obs").value,
+        data:new Date().toLocaleString("pt-BR")
     };
 
-    if(!dados.numero || !dados.cliente){
-        alert("Preencha número e nome do cliente.");
-        return;
-    }
+    await fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify(payload)
+    });
 
-    try{
-        const response=await fetch(API_URL,{
-            method:"POST",
-            body:JSON.stringify(dados)
-        });
-
-        const resultado=await response.json();
-
-        if(resultado.status==="ok"){
-            limparCampos();
-            carregarLigacoes();
-            alert("Ligação salva com sucesso.");
-        }else{
-            alert("Erro ao salvar ligação.");
-        }
-
-    }catch(error){
-        console.error(error);
-        alert("Erro de conexão.");
-    }
+    limparCampos();
+    carregarRegistros();
 }
 
 function limparCampos(){
-    document.getElementById("numero").value="";
     document.getElementById("cliente").value="";
-    document.getElementById("cpfCnpj").value="";
-    document.getElementById("atendeu").value="Sim";
-    document.getElementById("venda").value="Sim";
+    document.getElementById("telefone").value="";
+    document.getElementById("cpfcnpj").value="";
+    document.getElementById("obs").value="";
 }
 
-async function carregarLigacoes(){
-    try{
-        const response=await fetch(API_URL);
-        const dados=await response.json();
+async function carregarRegistros(){
+    const response=await fetch(API_URL);
+    registros=await response.json();
 
-        const lista=document.getElementById("lista");
-
-        lista.innerHTML=dados
-            .slice(1)
-            .reverse()
-            .slice(0,10)
-            .map(item=>`
-                <div class="item">
-                    <strong>${item[1]}</strong> — ${item[3]}<br>
-                    Número: ${item[2]}<br>
-                    CPF/CNPJ: ${item[4]}<br>
-                    Atendeu: ${item[5]}<br>
-                    Venda: ${item[6]}<br>
-                    <small>${item[0]}</small>
-                </div>
-            `).join("");
-
-    }catch(error){
-        console.error(error);
-    }
+    renderLista();
+    atualizarResumo();
 }
 
-/* atualização em tempo real a cada 2 segundos */
-setInterval(carregarLigacoes,2000);
+function renderLista(){
+    document.getElementById("lista").innerHTML=
+        registros.slice(-10).reverse().map(item=>`
+            <div class="item">
+                <b>${item.vendedor}</b><br>
+                ${item.cliente}<br>
+                ${item.telefone}<br>
+                Atendida: ${item.atendida}<br>
+                Venda: ${item.converteu}
+            </div>
+        `).join("");
+}
 
-carregarLigacoes();
+function atualizarResumo(){
+    const total=registros.length;
+    const atendidas=registros.filter(r=>r.atendida==="SIM").length;
+    const vendas=registros.filter(r=>r.converteu==="SIM").length;
+
+    const taxa=total>0 ? ((vendas/total)*100).toFixed(1) : 0;
+
+    document.getElementById("resumo").innerHTML=`
+        <div>Total de ligações: ${total}</div>
+        <div>Atendidas: ${atendidas}</div>
+        <div>Convertidas: ${vendas}</div>
+        <div>Taxa de conversão: ${taxa}%</div>
+    `;
+}
+
+function gerarPDF(){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(22);
+    doc.text("TAZZO CALL CENTER", 60, 20);
+
+    doc.setFontSize(12);
+
+    let y=40;
+
+    registros.slice(-20).forEach(item=>{
+        doc.text(
+            `${item.vendedor} | ${item.cliente} | ${item.atendida} | ${item.converteu}`,
+            10,
+            y
+        );
+        y+=10;
+    });
+
+    doc.save("relatorio_call_center_tazzo.pdf");
+}
+
+setInterval(carregarRegistros,2000);
+
+verificarSessao();
+carregarRegistros();
 </script>
 
 </body>
