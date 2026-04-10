@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TAZZO | Call Center V2.0 Premium</title>
+<title>TAZZO | Call Center V2.1 Premium</title>
 
 <link href="https://fonts.cdnfonts.com/css/bring-race" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -14,12 +14,29 @@
 body{
     min-height:100vh;
     background:#000;
-    padding:20px;
     color:#fff;
     font-family:Arial,sans-serif;
+    padding:20px;
 }
 
-.container{max-width:500px;margin:auto}
+#splash{
+    position:fixed;
+    inset:0;
+    background:#000;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    z-index:9999;
+    flex-direction:column;
+    transition:1s;
+}
+
+#splash .logo{
+    font-size:58px;
+    font-family:'Bring Race',sans-serif;
+}
+
+.container{max-width:520px;margin:auto}
 
 .logo{
     text-align:center;
@@ -32,13 +49,13 @@ body{
 .red{
     color:#ff0000;
     text-shadow:
-        0 0 5px #ff0000,
-        0 0 10px #ff0000,
-        0 0 20px #ff0000;
+        0 0 6px #ff0000,
+        0 0 12px #ff0000,
+        0 0 25px #ff0000;
 }
 
 .card{
-    background:rgba(255,255,255,.05);
+    background:rgba(255,255,255,.04);
     border:1px solid rgba(255,0,0,.25);
     border-radius:18px;
     padding:20px;
@@ -74,15 +91,28 @@ button{
     margin-bottom:10px;
 }
 
+.rank-item{
+    display:flex;
+    justify-content:space-between;
+    padding:10px 0;
+    border-bottom:1px solid rgba(255,255,255,.08);
+}
+
 #painelGerente{display:none}
 </style>
 </head>
 <body>
 
+<div id="splash">
+    <div class="logo">
+        <span class="white">TA</span><span class="red">ZZ</span><span class="white">O</span>
+    </div>
+</div>
+
 <div class="container">
 
 <div class="logo">
-<span class="white">TA</span><span class="red">ZZ</span><span class="white">O</span>
+    <span class="white">TA</span><span class="red">ZZ</span><span class="white">O</span>
 </div>
 
 <div class="card">
@@ -121,7 +151,10 @@ button{
 
 <div id="resumo"></div>
 
-<button onclick="gerarPDF()">Gerar Relatório PDF</button>
+<h3>Ranking por Conversão</h3>
+<div id="ranking"></div>
+
+<button onclick="gerarPDF()">Gerar Relatório Premium</button>
 <button onclick="logoutGerente()">Sair</button>
 </div>
 
@@ -138,9 +171,15 @@ const SENHA_GERENTE="gerentazzo";
 
 let registros=[];
 
+setTimeout(()=>{
+    document.getElementById("splash").style.opacity="0";
+    setTimeout(()=>{
+        document.getElementById("splash").style.display="none";
+    },1000);
+},2500);
+
 function abrirPainelGerente(){
     const senha=prompt("Digite a senha do gerente:");
-
     if(senha===SENHA_GERENTE){
         localStorage.setItem("gerente","true");
         document.getElementById("painelGerente").style.display="block";
@@ -214,38 +253,71 @@ function atualizarResumo(){
     const total=registros.length;
     const atendidas=registros.filter(r=>r.atendida==="SIM").length;
     const vendas=registros.filter(r=>r.converteu==="SIM").length;
-
-    const taxa=total>0 ? ((vendas/total)*100).toFixed(1) : 0;
+    const taxa=total>0?((vendas/total)*100).toFixed(1):0;
 
     document.getElementById("resumo").innerHTML=`
         <div>Total de ligações: ${total}</div>
         <div>Atendidas: ${atendidas}</div>
         <div>Convertidas: ${vendas}</div>
-        <div>Taxa de conversão: ${taxa}%</div>
+        <div>Taxa geral: ${taxa}%</div>
     `;
+
+    atualizarRanking();
+}
+
+function atualizarRanking(){
+    const vendedores=["Joabe","João Gabriel","Fábio","Caio Henrique"];
+
+    const ranking=vendedores.map(nome=>{
+        const lig=registros.filter(r=>r.vendedor===nome).length;
+        const vendas=registros.filter(
+            r=>r.vendedor===nome && r.converteu==="SIM"
+        ).length;
+
+        const taxa=lig>0?((vendas/lig)*100).toFixed(1):0;
+
+        return {nome,lig,vendas,taxa};
+    }).sort((a,b)=>b.taxa-a.taxa);
+
+    document.getElementById("ranking").innerHTML=
+        ranking.map((r,i)=>`
+            <div class="rank-item">
+                <span>${i+1}º ${r.nome}</span>
+                <span>${r.taxa}% (${r.vendas}/${r.lig})</span>
+            </div>
+        `).join("");
 }
 
 function gerarPDF(){
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    doc.setFontSize(22);
-    doc.text("TAZZO CALL CENTER", 60, 20);
+    doc.setFontSize(24);
+    doc.text("TAZZO", 90, 15);
 
-    doc.setFontSize(12);
+    doc.setFontSize(14);
+    doc.text("Relatório Call Center Premium", 60, 25);
 
     let y=40;
 
+    doc.rect(10,y,190,10);
+    doc.text("Vendedor",15,y+7);
+    doc.text("Cliente",60,y+7);
+    doc.text("Atendida",120,y+7);
+    doc.text("Venda",160,y+7);
+
+    y+=15;
+
     registros.slice(-20).forEach(item=>{
-        doc.text(
-            `${item.vendedor} | ${item.cliente} | ${item.atendida} | ${item.converteu}`,
-            10,
-            y
-        );
+        doc.rect(10,y,190,10);
+        doc.text(item.vendedor,15,y+7);
+        doc.text(item.cliente.substring(0,20),60,y+7);
+        doc.text(item.atendida,125,y+7);
+        doc.text(item.converteu,165,y+7);
         y+=10;
     });
 
-    doc.save("relatorio_call_center_tazzo.pdf");
+    doc.save("relatorio_call_center_tazzo_v21.pdf");
 }
 
 setInterval(carregarRegistros,2000);
