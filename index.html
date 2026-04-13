@@ -3,46 +3,45 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TAZZO | Dashboard Premium V13.7.1 FINAL</title>
+<title>TAZZO | Call Center V2.4 Premium</title>
 
 <link href="https://fonts.cdnfonts.com/css/bring-race" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 
 body{
     min-height:100vh;
-    background:linear-gradient(135deg,#180000,#8b0000,#1a0000);
-    background-size:400% 400%;
-    animation:bgMove 10s ease infinite;
-    padding:20px;
+    background:#000;
     color:#fff;
     font-family:Arial,sans-serif;
+    padding:20px;
 }
 
-@keyframes bgMove{
-    0%{background-position:0% 50%}
-    50%{background-position:100% 50%}
-    100%{background-position:0% 50%}
+.container{max-width:520px;margin:auto}
+
+.logo{
+    text-align:center;
+    font-size:42px;
+    margin-bottom:20px;
+    font-family:'Bring Race',sans-serif;
 }
 
-.container{max-width:480px;margin:auto}
-.logo{text-align:center;font-size:42px;margin-bottom:18px}
-.logo span{font-family:'Bring Race',sans-serif !important}
 .white{color:#fff}
-.red{color:#ff0000;text-shadow:0 0 8px #ff0000}
+.red{
+    color:#ff0000;
+    text-shadow:0 0 8px #ff0000;
+}
 
 .card{
-    background:rgba(255,255,255,.08);
-    border-radius:20px;
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,0,0,.25);
+    border-radius:18px;
     padding:20px;
     margin-bottom:18px;
-    box-shadow:0 0 20px rgba(255,0,0,.18);
-    backdrop-filter:blur(12px);
 }
 
-button,input,select{
+input,select,button,textarea{
     width:100%;
     padding:14px;
     margin-bottom:12px;
@@ -51,36 +50,29 @@ button,input,select{
     font-size:16px;
 }
 
-input,select{
-    background:rgba(0,0,0,.35);
+input,select,textarea{
+    background:#111;
     color:#fff;
 }
 
 button{
-    background:linear-gradient(90deg,#ff0000,#8b0000);
+    background:linear-gradient(90deg,#700000,#ff0000);
     color:#fff;
     font-weight:bold;
     cursor:pointer;
 }
 
-.progress-container{
-    width:100%;
-    height:14px;
-    background:rgba(255,255,255,.08);
-    border-radius:10px;
-    overflow:hidden;
-    margin:8px 0;
+.item{
+    padding:12px;
+    border-radius:12px;
+    background:#111;
+    margin-bottom:10px;
 }
 
-.progress-bar{
-    height:100%;
-    background:linear-gradient(90deg,#ff0000,#ff5c5c);
-}
-
-.rank-item{
-    display:flex;
-    justify-content:space-between;
-    padding:8px 0;
+.editado{
+    color:#ff4444;
+    font-size:12px;
+    font-weight:bold;
 }
 
 #painelGerente{display:none}
@@ -95,307 +87,149 @@ button{
 </div>
 
 <div class="card">
-<h3>Meta Geral da Loja</h3>
-<div>Total: R$ <span id="totalLoja">0,00</span></div>
-<div id="percentLoja">0%</div>
-<div class="progress-container">
-<div class="progress-bar" id="barraLoja"></div>
-</div>
-<div id="metaInfo"></div>
+<h3>Registrar Ligação</h3>
+
+<select id="vendedor">
+<option>Joabe</option>
+<option>João Gabriel</option>
+<option>Fábio</option>
+<option>Caio Henrique</option>
+</select>
+
+<input type="text" id="cliente" placeholder="Nome do cliente">
+<input type="text" id="telefone" placeholder="Telefone">
+<input type="text" id="cpfcnpj" placeholder="CPF ou CNPJ">
+
+<select id="atendida">
+<option value="SIM">Ligação atendida: SIM</option>
+<option value="NAO">Ligação atendida: NÃO</option>
+</select>
+
+<select id="converteu">
+<option value="SIM">Converteu em venda: SIM</option>
+<option value="NAO">Converteu em venda: NÃO</option>
+</select>
+
+<textarea id="obs" placeholder="Observações"></textarea>
+
+<button onclick="registrarLigacao()">Registrar ligação</button>
 </div>
 
-<div class="card">
-<h3>Performance Mensal</h3>
-<div id="performanceMensal"></div>
-</div>
-
-<div class="card">
-<h3>Performance Semanal</h3>
-<div id="performanceSemanal"></div>
-</div>
-
-<div class="card">
-<h3>Ranking</h3>
-<div id="ranking"></div>
-</div>
-
-<button onclick="abrirLoginGerente()">Acesso Gerente</button>
+<button onclick="abrirPainelGerente()">Painel do Gerente</button>
 
 <div id="painelGerente" class="card">
-<h3>Painel do Gerente</h3>
+<h3>Painel Gerencial</h3>
+<div id="resumo"></div>
+</div>
 
-<h4>Lançar Venda Diária</h4>
-<select id="vendedorVenda">
-<option>Joabe</option>
-<option>João Gabriel</option>
-<option>Fábio</option>
-<option>Caio Henrique</option>
-</select>
-
-<input type="text" id="valorVendaDia" placeholder="Valor vendido no dia">
-<button onclick="adicionarVendaDia()">Adicionar valor</button>
-
-<hr>
-
-<h4>Correção Meta Geral</h4>
-<input type="text" id="novoTotalLoja" placeholder="Novo total geral da loja">
-<button onclick="corrigirMetaLoja()">Salvar Total Geral</button>
-
-<hr>
-
-<select id="vendedorCorrecao">
-<option>Joabe</option>
-<option>João Gabriel</option>
-<option>Fábio</option>
-<option>Caio Henrique</option>
-</select>
-
-<input type="text" id="novoValorVendedor" placeholder="Novo valor">
-
-<select id="categoriaCorrecao">
-<option value="geral">Mensal</option>
-<option value="semana">Semanal</option>
-</select>
-
-<button onclick="corrigirValorVendedor()">Salvar Correção</button>
-
-<button onclick="gerarPDFDiario()">Relatório Diário Premium</button>
-<button onclick="gerarPDFMensal()">Relatório Mensal Premium</button>
-<button onclick="logoutGerente()">Sair</button>
+<div class="card">
+<h3>Últimas Ligações</h3>
+<div id="lista"></div>
 </div>
 
 </div>
 
 <script>
+const API_URL="SEU_LINK_APPS_SCRIPT";
 const SENHA_GERENTE="gerentazzo";
-const META_LOJA=210000;
-const META_MENSAL=70000;
-const META_SEMANAL=17500;
 
-const vendedores=["Joabe","João Gabriel","Fábio","Caio Henrique"];
+let registros=[];
 
-let vendas={
-    "Joabe":16114.43,
-    "João Gabriel":11231.53,
-    "Fábio":15809.44,
-    "Caio Henrique":2566.35
-};
-
-let semanaAtual={
-    "Joabe":0,
-    "João Gabriel":0,
-    "Fábio":0,
-    "Caio Henrique":0
-};
-
-let correcoes={
-    mensal:{},
-    semanal:{},
-    totalLoja:null
-};
-
-function abrirLoginGerente(){
+function abrirPainelGerente(){
     const senha=prompt("Digite a senha:");
     if(senha===SENHA_GERENTE){
         document.getElementById("painelGerente").style.display="block";
-    }else{
-        alert("Senha incorreta");
     }
 }
 
-function logoutGerente(){
-    document.getElementById("painelGerente").style.display="none";
-}
+async function registrarLigacao(){
+    const payload={
+        action:"registrar",
+        vendedor:document.getElementById("vendedor").value,
+        cliente:document.getElementById("cliente").value,
+        telefone:document.getElementById("telefone").value,
+        cpfcnpj:document.getElementById("cpfcnpj").value,
+        atendida:document.getElementById("atendida").value,
+        converteu:document.getElementById("converteu").value,
+        obs:document.getElementById("obs").value,
+        editado:"NAO",
+        data:new Date().toLocaleString("pt-BR")
+    };
 
-function adicionarVendaDia(){
-    const vendedor=document.getElementById("vendedorVenda").value;
-    const valor=parseFloat(
-        document.getElementById("valorVendaDia").value
-        .replace(/\./g,"")
-        .replace(",",".")
-    );
-
-    if(isNaN(valor)||valor<=0){
-        alert("Valor inválido");
-        return;
-    }
-
-    vendas[vendedor]+=valor;
-    semanaAtual[vendedor]+=valor;
-
-    atualizarDashboard();
-
-    document.getElementById("valorVendaDia").value="";
-    alert("Venda adicionada com sucesso");
-}
-
-function corrigirMetaLoja(){
-    const valor=parseFloat(
-        document.getElementById("novoTotalLoja").value
-        .replace(/\./g,"")
-        .replace(",",".")
-    );
-
-    correcoes.totalLoja=valor;
-    atualizarDashboard();
-    alert("Meta geral corrigida");
-}
-
-function corrigirValorVendedor(){
-    const vendedor=document.getElementById("vendedorCorrecao").value;
-    const valor=parseFloat(
-        document.getElementById("novoValorVendedor").value
-        .replace(/\./g,"")
-        .replace(",",".")
-    );
-
-    const categoria=document.getElementById("categoriaCorrecao").value;
-
-    if(categoria==="geral"){
-        correcoes.mensal[vendedor]=valor;
-    }else{
-        correcoes.semanal[vendedor]=valor;
-    }
-
-    atualizarDashboard();
-    alert("Correção salva");
-}
-
-function formatar(v){
-    return Number(v).toLocaleString("pt-BR",{
-        minimumFractionDigits:2,
-        maximumFractionDigits:2
-    });
-}
-
-function percentual(v,m){
-    return ((v/m)*100).toFixed(1);
-}
-
-function atualizarDashboard(){
-    let total=0;
-    let mensalHTML="";
-    let semanalHTML="";
-
-    vendedores.forEach(nome=>{
-        let mensal=correcoes.mensal[nome] ?? vendas[nome];
-        let semanal=correcoes.semanal[nome] ?? semanaAtual[nome];
-
-        total+=mensal;
-
-        let pctMensal=percentual(mensal,META_MENSAL);
-        let pctSemanal=percentual(semanal,META_SEMANAL);
-
-        mensalHTML+=`
-        <div>${nome}: R$ ${formatar(mensal)} (${pctMensal}%)</div>
-        <div class="progress-container">
-            <div class="progress-bar" style="width:${Math.min(Number(pctMensal),100)}%"></div>
-        </div>`;
-
-        semanalHTML+=`
-        <div>${nome}: R$ ${formatar(semanal)} (${pctSemanal}%)</div>
-        <div class="progress-container">
-            <div class="progress-bar" style="width:${Math.min(Number(pctSemanal),100)}%"></div>
-        </div>`;
+    await fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify(payload)
     });
 
-    let totalFinal=correcoes.totalLoja ?? total;
-    let pctLoja=percentual(totalFinal,META_LOJA);
+    alert("Ligação cadastrada");
 
-    document.getElementById("totalLoja").innerText=formatar(totalFinal);
-    document.getElementById("percentLoja").innerText=pctLoja+"%";
-    document.getElementById("barraLoja").style.width=Math.min(Number(pctLoja),100)+"%";
-    document.getElementById("metaInfo").innerHTML=
-        `Faltam R$ ${formatar(Math.max(0,META_LOJA-totalFinal))}`;
-
-    document.getElementById("performanceMensal").innerHTML=mensalHTML;
-    document.getElementById("performanceSemanal").innerHTML=semanalHTML;
-
-    atualizarRanking();
+    limparCampos();
+    carregarRegistros();
 }
 
-function atualizarRanking(){
-    let ranking=vendedores.map(nome=>{
-        let valor=correcoes.mensal[nome] ?? vendas[nome];
-        return [nome,valor];
-    }).sort((a,b)=>b[1]-a[1]);
+function limparCampos(){
+    document.getElementById("cliente").value="";
+    document.getElementById("telefone").value="";
+    document.getElementById("cpfcnpj").value="";
+    document.getElementById("obs").value="";
+}
 
-    document.getElementById("ranking").innerHTML=
-        ranking.map((r,i)=>`
-        <div class="rank-item">
-            <span>${i+1}º ${r[0]}</span>
-            <span>R$ ${formatar(r[1])}</span>
-        </div>
+async function carregarRegistros(){
+    const response=await fetch(API_URL+"?t="+Date.now());
+    registros=await response.json();
+
+    renderLista();
+    atualizarResumo();
+}
+
+function renderLista(){
+    document.getElementById("lista").innerHTML=
+        registros.slice(-10).reverse().map((item,index)=>`
+            <div class="item">
+                <b>${item.vendedor}</b><br>
+                ${item.cliente}<br>
+                ${item.telefone}<br>
+                Atendida: ${item.atendida}<br>
+                Venda: ${item.converteu}<br>
+                ${item.editado==="SIM" ? '<div class="editado">EDITADA</div>' : ''}
+                <button onclick="editarLigacao(${item.row})">
+                    Editar venda
+                </button>
+            </div>
         `).join("");
 }
 
-function gerarPDFDiario(){
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+async function editarLigacao(row){
+    const novoStatus=prompt("Converteu em venda? SIM ou NAO");
 
-    doc.setFontSize(24);
-    doc.text("TAZZO", 85, 15);
+    if(!novoStatus) return;
 
-    doc.setFontSize(14);
-    doc.text("Relatório Diário Premium", 65, 25);
-
-    let y=40;
-
-    doc.rect(10,y,190,10);
-    doc.text("Vendedor",15,y+7);
-    doc.text("Venda",120,y+7);
-    doc.text("Meta %",160,y+7);
-
-    y+=15;
-
-    vendedores.forEach(nome=>{
-        const valor=correcoes.mensal[nome] ?? vendas[nome];
-        const pct=percentual(valor,META_MENSAL);
-
-        doc.rect(10,y,190,10);
-        doc.text(nome,15,y+7);
-        doc.text("R$ "+formatar(valor),110,y+7);
-        doc.text(pct+"%",165,y+7);
-        y+=10;
+    await fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"editar",
+            row:row,
+            converteu:novoStatus.toUpperCase(),
+            editado:"SIM"
+        })
     });
 
-    doc.save("relatorio_diario_tazzo.pdf");
+    alert("Ligação editada com sucesso");
+    carregarRegistros();
 }
 
-function gerarPDFMensal(){
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+function atualizarResumo(){
+    const total=registros.length;
+    const vendas=registros.filter(r=>r.converteu==="SIM").length;
 
-    doc.setFontSize(24);
-    doc.text("TAZZO", 85, 15);
-
-    doc.setFontSize(14);
-    doc.text("Relatório Mensal Premium", 62, 25);
-
-    let y=40;
-
-    doc.rect(10,y,190,10);
-    doc.text("Vendedor",15,y+7);
-    doc.text("Mensal",100,y+7);
-    doc.text("Semanal",145,y+7);
-
-    y+=15;
-
-    vendedores.forEach(nome=>{
-        const mensal=correcoes.mensal[nome] ?? vendas[nome];
-        const semanal=correcoes.semanal[nome] ?? semanaAtual[nome];
-
-        doc.rect(10,y,190,10);
-        doc.text(nome,15,y+7);
-        doc.text("R$ "+formatar(mensal),90,y+7);
-        doc.text("R$ "+formatar(semanal),140,y+7);
-        y+=10;
-    });
-
-    doc.save("relatorio_mensal_tazzo.pdf");
+    document.getElementById("resumo").innerHTML=`
+        <div>Total: ${total}</div>
+        <div>Vendas: ${vendas}</div>
+    `;
 }
 
-atualizarDashboard();
+setInterval(carregarRegistros,2000);
+carregarRegistros();
 </script>
 
 </body>
