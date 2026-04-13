@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TAZZO | Call Center V2.3 Premium</title>
+<title>TAZZO | Call Center V2.4 Premium</title>
 
 <link href="https://fonts.cdnfonts.com/css/bring-race" rel="stylesheet">
 
@@ -31,13 +31,16 @@ body{
 }
 
 .white{color:#fff}
-
 .red{
     color:#ff0000;
-    text-shadow:
-        0 0 6px #ff0000,
-        0 0 12px #ff0000,
-        0 0 25px #ff0000;
+    text-shadow:0 0 6px #ff0000,0 0 12px #ff0000;
+}
+
+.relogio{
+    text-align:center;
+    margin-bottom:20px;
+    color:#ccc;
+    font-size:14px;
 }
 
 .card{
@@ -46,7 +49,6 @@ body{
     border-radius:18px;
     padding:20px;
     margin-bottom:18px;
-    box-shadow:0 0 15px rgba(255,0,0,.15);
 }
 
 input,select,button,textarea{
@@ -73,19 +75,18 @@ button{
 .item{
     padding:12px;
     background:#111;
+    border:1px solid rgba(255,255,255,.06);
     margin-bottom:10px;
     border-radius:12px;
-    border:1px solid rgba(255,255,255,.06);
-}
-
-#painelGerente{
-    display:none;
 }
 
 .excluir-btn{
     margin-top:10px;
-    padding:10px;
     background:#550000;
+}
+
+#painelGerente{
+    display:none;
 }
 </style>
 </head>
@@ -96,6 +97,8 @@ button{
 <div class="logo">
 <span class="white">TA</span><span class="red">ZZ</span><span class="white">O</span>
 </div>
+
+<div class="relogio" id="relogio"></div>
 
 <div class="card">
 <h3>Registrar Ligação</h3>
@@ -135,8 +138,21 @@ Painel do Gerente
 <div id="painelGerente" class="card">
 <h3>Painel Gerencial</h3>
 
+<select id="filtroVendedor" onchange="renderListaGerente()">
+<option value="">Todos vendedores</option>
+<option>Joabe</option>
+<option>João Gabriel</option>
+<option>Fábio</option>
+<option>Caio Henrique</option>
+</select>
+
+<input type="text"
+id="filtroData"
+placeholder="Filtrar por data (dd/mm/aaaa)"
+onkeyup="renderListaGerente()">
+
 <button onclick="removerDuplicadasReais()">
-Excluir duplicadas da planilha
+Excluir duplicadas
 </button>
 
 <div id="listaGerente"></div>
@@ -156,6 +172,20 @@ const API_URL="https://script.google.com/macros/s/AKfycbxpj0nN8Hv6F7fAr8CgC9Vp9I
 const SENHA_GERENTE="gerentazzo";
 
 let registros=[];
+
+function atualizarRelogio(){
+    const agora=new Date(
+        new Date().toLocaleString("en-US",{
+            timeZone:"America/Sao_Paulo"
+        })
+    );
+
+    document.getElementById("relogio").innerText=
+        agora.toLocaleString("pt-BR")+" • Brasília";
+}
+
+setInterval(atualizarRelogio,1000);
+atualizarRelogio();
 
 function abrirPainelGerente(){
     const senha=prompt("Digite a senha:");
@@ -189,7 +219,9 @@ async function registrarLigacao(){
         atendida:document.getElementById("atendida").value,
         converteu:document.getElementById("converteu").value,
         obs:document.getElementById("obs").value,
-        data:new Date().toLocaleString("pt-BR")
+        data:new Date().toLocaleString("pt-BR",{
+            timeZone:"America/Sao_Paulo"
+        })
     };
 
     await fetch(API_URL,{
@@ -197,7 +229,7 @@ async function registrarLigacao(){
         body:JSON.stringify(payload)
     });
 
-    alert("Ligação cadastrada");
+    alert("Ligação cadastrada com sucesso");
 
     limparCampos();
     carregarRegistros();
@@ -214,6 +246,12 @@ async function carregarRegistros(){
     const response=await fetch(API_URL);
     registros=await response.json();
 
+    registros=registros.filter(item=>
+        item &&
+        item.vendedor &&
+        item.cliente
+    );
+
     renderListaPublica();
     renderListaGerente();
 }
@@ -225,6 +263,7 @@ function renderListaPublica(){
                 <b>${item.vendedor}</b><br>
                 ${item.cliente}<br>
                 ${item.telefone}<br>
+                ${item.data}<br>
                 Atendida: ${item.atendida}<br>
                 Venda: ${item.converteu}
             </div>
@@ -232,12 +271,31 @@ function renderListaPublica(){
 }
 
 function renderListaGerente(){
+    const vendedorFiltro=
+        document.getElementById("filtroVendedor").value;
+
+    const dataFiltro=
+        document.getElementById("filtroData").value;
+
+    let lista=registros.filter(item=>{
+        const vendedorOk=
+            !vendedorFiltro ||
+            item.vendedor===vendedorFiltro;
+
+        const dataOk=
+            !dataFiltro ||
+            item.data.includes(dataFiltro);
+
+        return vendedorOk && dataOk;
+    });
+
     document.getElementById("listaGerente").innerHTML=
-        registros.slice(-20).reverse().map(item=>`
+        lista.reverse().map(item=>`
             <div class="item">
                 <b>${item.vendedor}</b><br>
                 ${item.cliente}<br>
                 ${item.telefone}<br>
+                ${item.data}<br>
                 Atendida: ${item.atendida}<br>
                 Venda: ${item.converteu}
 
@@ -250,9 +308,6 @@ function renderListaGerente(){
 }
 
 async function excluirRegistroReal(row){
-    const confirmar=confirm("Deseja excluir esta ligação?");
-    if(!confirmar) return;
-
     await fetch(API_URL,{
         method:"POST",
         body:JSON.stringify({
@@ -265,12 +320,6 @@ async function excluirRegistroReal(row){
 }
 
 async function removerDuplicadasReais(){
-    const confirmar=confirm(
-        "Deseja excluir todas as duplicadas?"
-    );
-
-    if(!confirmar) return;
-
     await fetch(API_URL,{
         method:"POST",
         body:JSON.stringify({
@@ -278,7 +327,7 @@ async function removerDuplicadasReais(){
         })
     });
 
-    alert("Duplicadas removidas com sucesso");
+    alert("Duplicadas removidas");
     carregarRegistros();
 }
 
