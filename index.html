@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TAZZO | Call Center V2.4 Premium</title>
+<title>TAZZO | Call Center V2.5 Premium</title>
 
 <link href="https://fonts.cdnfonts.com/css/bring-race" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -18,10 +19,7 @@ body{
     padding:20px;
 }
 
-.container{
-    max-width:520px;
-    margin:auto;
-}
+.container{max-width:520px;margin:auto}
 
 .logo{
     text-align:center;
@@ -51,6 +49,21 @@ body{
     margin-bottom:18px;
 }
 
+.item{
+    padding:12px;
+    background:#111;
+    border:1px solid rgba(255,255,255,.06);
+    margin-bottom:10px;
+    border-radius:12px;
+}
+
+.grupo-vendedor{
+    margin-bottom:20px;
+    padding:15px;
+    border:1px solid rgba(255,0,0,.15);
+    border-radius:14px;
+}
+
 input,select,button,textarea{
     width:100%;
     padding:14px;
@@ -72,22 +85,7 @@ button{
     cursor:pointer;
 }
 
-.item{
-    padding:12px;
-    background:#111;
-    border:1px solid rgba(255,255,255,.06);
-    margin-bottom:10px;
-    border-radius:12px;
-}
-
-.excluir-btn{
-    margin-top:10px;
-    background:#550000;
-}
-
-#painelGerente{
-    display:none;
-}
+#painelGerente{display:none}
 </style>
 </head>
 <body>
@@ -138,30 +136,17 @@ Painel do Gerente
 <div id="painelGerente" class="card">
 <h3>Painel Gerencial</h3>
 
-<select id="filtroVendedor" onchange="renderListaGerente()">
-<option value="">Todos vendedores</option>
-<option>Joabe</option>
-<option>João Gabriel</option>
-<option>Fábio</option>
-<option>Caio Henrique</option>
-</select>
-
-<input type="text"
-id="filtroData"
-placeholder="Filtrar por data (dd/mm/aaaa)"
-onkeyup="renderListaGerente()">
-
-<button onclick="removerDuplicadasReais()">
-Excluir duplicadas
+<button onclick="gerarRelatorioDiario()">
+Gerar Relatório Diário
 </button>
 
-<div id="listaGerente"></div>
-
-<button onclick="logoutGerente()">Sair</button>
+<button onclick="logoutGerente()">
+Sair
+</button>
 </div>
 
 <div class="card">
-<h3>Últimas Ligações</h3>
+<h3>Ligações do Dia</h3>
 <div id="lista"></div>
 </div>
 
@@ -173,15 +158,21 @@ const SENHA_GERENTE="gerentazzo";
 
 let registros=[];
 
-function atualizarRelogio(){
-    const agora=new Date(
+function agoraBrasilia(){
+    return new Date(
         new Date().toLocaleString("en-US",{
             timeZone:"America/Sao_Paulo"
         })
     );
+}
 
+function dataHoje(){
+    return agoraBrasilia().toLocaleDateString("pt-BR");
+}
+
+function atualizarRelogio(){
     document.getElementById("relogio").innerText=
-        agora.toLocaleString("pt-BR")+" • Brasília";
+        agoraBrasilia().toLocaleString("pt-BR")+" • Brasília";
 }
 
 setInterval(atualizarRelogio,1000);
@@ -189,11 +180,9 @@ atualizarRelogio();
 
 function abrirPainelGerente(){
     const senha=prompt("Digite a senha:");
-
     if(senha===SENHA_GERENTE){
         localStorage.setItem("gerente","true");
         document.getElementById("painelGerente").style.display="block";
-        carregarRegistros();
     }else{
         alert("Senha incorreta");
     }
@@ -219,9 +208,7 @@ async function registrarLigacao(){
         atendida:document.getElementById("atendida").value,
         converteu:document.getElementById("converteu").value,
         obs:document.getElementById("obs").value,
-        data:new Date().toLocaleString("pt-BR",{
-            timeZone:"America/Sao_Paulo"
-        })
+        data:agoraBrasilia().toLocaleString("pt-BR")
     };
 
     await fetch(API_URL,{
@@ -230,7 +217,6 @@ async function registrarLigacao(){
     });
 
     alert("Ligação cadastrada com sucesso");
-
     limparCampos();
     carregarRegistros();
 }
@@ -249,86 +235,109 @@ async function carregarRegistros(){
     registros=registros.filter(item=>
         item &&
         item.vendedor &&
-        item.cliente
+        item.cliente &&
+        item.data &&
+        item.data.includes(dataHoje())
     );
 
-    renderListaPublica();
-    renderListaGerente();
+    renderListaAgrupada();
 }
 
-function renderListaPublica(){
-    document.getElementById("lista").innerHTML=
-        registros.slice(-10).reverse().map(item=>`
-            <div class="item">
-                <b>${item.vendedor}</b><br>
-                ${item.cliente}<br>
-                ${item.telefone}<br>
-                ${item.data}<br>
-                Atendida: ${item.atendida}<br>
-                Venda: ${item.converteu}
-            </div>
-        `).join("");
-}
+function renderListaAgrupada(){
+    const vendedores=[
+        "Joabe",
+        "João Gabriel",
+        "Fábio",
+        "Caio Henrique"
+    ];
 
-function renderListaGerente(){
-    const vendedorFiltro=
-        document.getElementById("filtroVendedor").value;
+    let html="";
 
-    const dataFiltro=
-        document.getElementById("filtroData").value;
+    vendedores.forEach(nome=>{
+        const listaVendedor=
+            registros.filter(r=>r.vendedor===nome);
 
-    let lista=registros.filter(item=>{
-        const vendedorOk=
-            !vendedorFiltro ||
-            item.vendedor===vendedorFiltro;
+        if(listaVendedor.length===0) return;
 
-        const dataOk=
-            !dataFiltro ||
-            item.data.includes(dataFiltro);
-
-        return vendedorOk && dataOk;
+        html+=`
+        <div class="grupo-vendedor">
+            <h3>${nome}</h3>
+            ${listaVendedor.map(item=>`
+                <div class="item">
+                    ${item.cliente}<br>
+                    ${item.telefone}<br>
+                    ${item.data}<br>
+                    Atendida: ${item.atendida}<br>
+                    Venda: ${item.converteu}
+                </div>
+            `).join("")}
+        </div>`;
     });
 
-    document.getElementById("listaGerente").innerHTML=
-        lista.reverse().map(item=>`
-            <div class="item">
-                <b>${item.vendedor}</b><br>
-                ${item.cliente}<br>
-                ${item.telefone}<br>
-                ${item.data}<br>
-                Atendida: ${item.atendida}<br>
-                Venda: ${item.converteu}
-
-                <button class="excluir-btn"
-                onclick="excluirRegistroReal(${item.row})">
-                    Excluir
-                </button>
-            </div>
-        `).join("");
+    document.getElementById("lista").innerHTML=html;
 }
 
-async function excluirRegistroReal(row){
-    await fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({
-            action:"delete",
-            row:row
-        })
-    });
+function verificarViradaDia(){
+    const agora=agoraBrasilia();
 
-    carregarRegistros();
+    if(
+        agora.getHours()===0 &&
+        agora.getMinutes()===0
+    ){
+        registros=[];
+        renderListaAgrupada();
+    }
 }
 
-async function removerDuplicadasReais(){
-    await fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({
-            action:"deleteDuplicates"
-        })
+setInterval(verificarViradaDia,60000);
+
+function gerarRelatorioDiario(){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    let y=20;
+
+    doc.setFontSize(18);
+    doc.text(
+        "Relatório de ligações - "+dataHoje(),
+        20,
+        y
+    );
+
+    y+=15;
+
+    const vendedores=[
+        "Joabe",
+        "João Gabriel",
+        "Fábio",
+        "Caio Henrique"
+    ];
+
+    vendedores.forEach(nome=>{
+        const lista=registros.filter(
+            r=>r.vendedor===nome
+        );
+
+        if(lista.length===0) return;
+
+        doc.setFontSize(14);
+        doc.text(nome,20,y);
+        y+=8;
+
+        lista.forEach(item=>{
+            doc.setFontSize(10);
+            doc.text(
+                `${item.cliente} | ${item.telefone} | ${item.atendida} | ${item.converteu}`,
+                20,
+                y
+            );
+            y+=6;
+        });
+
+        y+=8;
     });
 
-    alert("Duplicadas removidas");
-    carregarRegistros();
+    doc.save(`Relatorio_de_ligacoes_${dataHoje().replace(/\//g,"-")}.pdf`);
 }
 
 setInterval(carregarRegistros,2000);
