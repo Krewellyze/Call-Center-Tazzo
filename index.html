@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TAZZO | Call Center Premium Final</title>
+<title>TAZZO | Call Center V3.0 Premium</title>
 
 <link href="https://fonts.cdnfonts.com/css/bring-race" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -12,16 +12,14 @@
 *{margin:0;padding:0;box-sizing:border-box}
 
 body{
+    min-height:100vh;
     background:#000;
     color:#fff;
     font-family:Arial,sans-serif;
     padding:20px;
 }
 
-.container{
-    max-width:520px;
-    margin:auto;
-}
+.container{max-width:520px;margin:auto}
 
 .logo{
     text-align:center;
@@ -31,17 +29,20 @@ body{
 }
 
 .white{color:#fff}
-.red{color:#ff0000;text-shadow:0 0 10px #ff0000}
+.red{
+    color:#ff0000;
+    text-shadow:0 0 8px #ff0000;
+}
 
 .card{
-    background:#080808;
+    background:rgba(255,255,255,.04);
     border:1px solid rgba(255,0,0,.25);
     border-radius:18px;
     padding:20px;
     margin-bottom:18px;
 }
 
-input,select,textarea,button{
+input,select,button,textarea{
     width:100%;
     padding:14px;
     margin-bottom:12px;
@@ -56,13 +57,14 @@ input,select,textarea{
 }
 
 button{
-    background:linear-gradient(90deg,#8b0000,#ff0000);
+    background:linear-gradient(90deg,#700000,#ff0000);
     color:#fff;
     font-weight:bold;
+    cursor:pointer;
 }
 
 .item{
-    padding:14px;
+    padding:12px;
     border-radius:12px;
     background:#111;
     margin-bottom:10px;
@@ -74,9 +76,7 @@ button{
     padding:10px 0;
 }
 
-#painelGerente{
-    display:none;
-}
+#painelGerente{display:none}
 </style>
 </head>
 <body>
@@ -97,9 +97,9 @@ button{
 <option>Caio Henrique</option>
 </select>
 
-<input id="cliente" placeholder="Cliente">
-<input id="telefone" placeholder="Telefone">
-<input id="cpfcnpj" placeholder="CPF/CNPJ">
+<input type="text" id="cliente" placeholder="Nome do cliente">
+<input type="text" id="telefone" placeholder="Telefone">
+<input type="text" id="cpfcnpj" placeholder="CPF ou CNPJ">
 
 <select id="atendida">
 <option value="SIM">Ligação atendida: SIM</option>
@@ -113,14 +113,10 @@ button{
 
 <textarea id="obs" placeholder="Observações"></textarea>
 
-<button onclick="registrarLigacao()">
-Registrar ligação
-</button>
+<button onclick="registrarLigacao()">Registrar ligação</button>
 </div>
 
-<button onclick="abrirPainelGerente()">
-Painel do Gerente
-</button>
+<button onclick="abrirPainelGerente()">Painel do Gerente</button>
 
 <div id="painelGerente" class="card">
 <h3>Painel Gerencial</h3>
@@ -130,13 +126,8 @@ Painel do Gerente
 <h3>Ranking por Conversão</h3>
 <div id="ranking"></div>
 
-<button onclick="gerarPDF()">
-Relatório Diário Premium
-</button>
-
-<button onclick="logoutGerente()">
-Sair
-</button>
+<button onclick="gerarPDF()">Relatório Diário Premium</button>
+<button onclick="logoutGerente()">Sair</button>
 </div>
 
 <div class="card">
@@ -148,18 +139,18 @@ Sair
 
 <script>
 const API_URL="https://script.google.com/macros/s/AKfycbxpj0nN8Hv6F7fAr8CgC9Vp9IQgEYkT6otLUCwJMK-JRty1u0H1EjjBlKBJ3tpw4hxs/exec";
-
 const SENHA_GERENTE="gerentazzo";
 
 let registros=[];
 
 function abrirPainelGerente(){
-    const senha=prompt("Digite a senha:");
+    const senha=prompt("Digite a senha do gerente:");
 
     if(senha===SENHA_GERENTE){
         localStorage.setItem("gerente","true");
         document.getElementById("painelGerente").style.display="block";
         atualizarResumo();
+        renderLista();
     }else{
         alert("Senha incorreta");
     }
@@ -174,6 +165,7 @@ function verificarSessao(){
 function logoutGerente(){
     localStorage.removeItem("gerente");
     document.getElementById("painelGerente").style.display="none";
+    renderLista();
 }
 
 async function registrarLigacao(){
@@ -189,24 +181,19 @@ async function registrarLigacao(){
         data:new Date().toLocaleString("pt-BR")
     };
 
-    try{
-        const response=await fetch(API_URL,{
-            method:"POST",
-            body:JSON.stringify(payload)
-        });
+    const response=await fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify(payload)
+    });
 
-        const resultado=await response.json();
+    const resultado=await response.json();
 
-        if(resultado.status==="ok"){
-            alert("Ligação registrada com sucesso");
-            limparCampos();
-            carregarRegistros();
-        }else{
-            alert(resultado.mensagem);
-        }
-
-    }catch(erro){
-        alert("Erro ao registrar ligação");
+    if(resultado.status==="ok"){
+        limparCampos();
+        carregarRegistros();
+        alert("Ligação registrada");
+    }else{
+        alert("Erro ao registrar");
     }
 }
 
@@ -217,50 +204,80 @@ function limparCampos(){
     document.getElementById("obs").value="";
 }
 
+async function editarLigacao(row){
+    const novoStatus=prompt("Digite SIM ou NAO");
+
+    if(!novoStatus) return;
+
+    await fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"editar",
+            row:row,
+            converteu:novoStatus.toUpperCase()
+        })
+    });
+
+    carregarRegistros();
+    alert("Ligação editada");
+}
+
+async function excluirLigacao(row){
+    if(!confirm("Deseja excluir esta ligação?")) return;
+
+    await fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"excluir",
+            row:row
+        })
+    });
+
+    carregarRegistros();
+    alert("Ligação excluída");
+}
+
 async function carregarRegistros(){
-    try{
-        const response=await fetch(API_URL+"?t="+Date.now());
-        registros=await response.json();
+    const response=await fetch(API_URL);
+    registros=await response.json();
 
-        renderLista();
-        atualizarResumo();
-
-    }catch(e){
-        console.log(e);
-    }
+    renderLista();
+    atualizarResumo();
 }
 
 function renderLista(){
-    const lista=document.getElementById("lista");
+    const gerente=localStorage.getItem("gerente")==="true";
 
-    lista.innerHTML=registros
-        .slice(-10)
-        .reverse()
-        .map(item=>`
+    document.getElementById("lista").innerHTML=
+        registros.length===0
+        ? "<div class='item'>Nenhuma ligação registrada hoje</div>"
+        : registros.slice(-10).reverse().map(item=>`
             <div class="item">
                 <b>${item.vendedor}</b><br>
                 ${item.cliente}<br>
                 ${item.telefone}<br>
                 Atendida: ${item.atendida}<br>
                 Venda: ${item.converteu}<br>
-                ${item.editado==="SIM" ? "<b>EDITADO</b>" : ""}
+                ${item.editado==="SIM" ? "<b>EDITADO</b><br>" : ""}
+                <button onclick="editarLigacao(${item.row})">
+                    Editar Venda
+                </button>
+                ${
+                    gerente
+                    ? `<button onclick="excluirLigacao(${item.row})">
+                        Excluir
+                       </button>`
+                    : ""
+                }
             </div>
         `).join("");
 }
 
 function atualizarResumo(){
     const total=registros.length;
-
-    const atendidas=registros.filter(
-        r=>r.atendida==="SIM"
-    ).length;
-
-    const vendas=registros.filter(
-        r=>r.converteu==="SIM"
-    ).length;
-
-    const taxa=total>0?
-        ((vendas/total)*100).toFixed(1):0;
+    const atendidas=registros.filter(r=>r.atendida==="SIM").length;
+    const vendas=registros.filter(r=>r.converteu==="SIM").length;
+    const taxa=total>0?((vendas/total)*100).toFixed(1):0;
 
     document.getElementById("resumo").innerHTML=`
         <div>Total de ligações: ${total}</div>
@@ -273,25 +290,15 @@ function atualizarResumo(){
 }
 
 function atualizarRanking(){
-    const vendedores=[
-        "Joabe",
-        "João Gabriel",
-        "Fábio",
-        "Caio Henrique"
-    ];
+    const vendedores=["Joabe","João Gabriel","Fábio","Caio Henrique"];
 
     const ranking=vendedores.map(nome=>{
-        const lig=registros.filter(
-            r=>r.vendedor===nome
-        ).length;
-
+        const lig=registros.filter(r=>r.vendedor===nome).length;
         const vendas=registros.filter(
-            r=>r.vendedor===nome &&
-            r.converteu==="SIM"
+            r=>r.vendedor===nome && r.converteu==="SIM"
         ).length;
 
-        const taxa=lig>0?
-            ((vendas/lig)*100).toFixed(1):0;
+        const taxa=lig>0?((vendas/lig)*100).toFixed(1):0;
 
         return {nome,lig,vendas,taxa};
     }).sort((a,b)=>b.taxa-a.taxa);
@@ -307,22 +314,20 @@ function atualizarRanking(){
 
 function gerarPDF(){
     const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
 
-    const doc=new jsPDF();
-
-    doc.setFontSize(22);
-    doc.text("TAZZO",80,20);
+    doc.setFontSize(24);
+    doc.text("TAZZO", 90, 15);
 
     doc.setFontSize(14);
-    doc.text("Relatório Diário Premium",55,30);
+    doc.text("Relatório Diário Premium", 60, 25);
 
-    let y=45;
+    let y=40;
 
     registros.forEach(item=>{
         doc.text(
             `${item.vendedor} - ${item.cliente} - ${item.converteu}`,
-            10,
-            y
+            10,y
         );
         y+=10;
     });
@@ -335,5 +340,6 @@ setInterval(carregarRegistros,3000);
 verificarSessao();
 carregarRegistros();
 </script>
+
 </body>
 </html>
