@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TAZZO | Call Center V2.4 Premium</title>
+<title>TAZZO | Call Center V2.5 Premium</title>
 
 <link href="https://fonts.cdnfonts.com/css/bring-race" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -69,6 +70,12 @@ button{
     margin-bottom:10px;
 }
 
+.rank-item{
+    display:flex;
+    justify-content:space-between;
+    padding:10px 0;
+}
+
 .editado{
     color:#ff4444;
     font-size:12px;
@@ -119,7 +126,14 @@ button{
 
 <div id="painelGerente" class="card">
 <h3>Painel Gerencial</h3>
+
 <div id="resumo"></div>
+
+<h3>Ranking por Conversão</h3>
+<div id="ranking"></div>
+
+<button onclick="gerarPDF()">Relatório Diário Premium</button>
+<button onclick="logoutGerente()">Sair</button>
 </div>
 
 <div class="card">
@@ -138,6 +152,21 @@ let registros=[];
 function abrirPainelGerente(){
     const senha=prompt("Digite a senha:");
     if(senha===SENHA_GERENTE){
+        localStorage.setItem("gerente","true");
+        document.getElementById("painelGerente").style.display="block";
+        atualizarResumo();
+    }else{
+        alert("Senha incorreta");
+    }
+}
+
+function logoutGerente(){
+    localStorage.removeItem("gerente");
+    document.getElementById("painelGerente").style.display="none";
+}
+
+function verificarSessao(){
+    if(localStorage.getItem("gerente")==="true"){
         document.getElementById("painelGerente").style.display="block";
     }
 }
@@ -152,19 +181,23 @@ async function registrarLigacao(){
         atendida:document.getElementById("atendida").value,
         converteu:document.getElementById("converteu").value,
         obs:document.getElementById("obs").value,
-        editado:"NAO",
-        data:new Date().toLocaleString("pt-BR")
+        data:new Date().toLocaleString("pt-BR"),
+        editado:"NAO"
     };
 
-    await fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify(payload)
-    });
+    try{
+        await fetch(API_URL,{
+            method:"POST",
+            body:JSON.stringify(payload)
+        });
 
-    alert("Ligação cadastrada");
+        alert("Ligação cadastrada");
 
-    limparCampos();
-    carregarRegistros();
+        limparCampos();
+        carregarRegistros();
+    }catch(e){
+        alert("Erro ao registrar");
+    }
 }
 
 function limparCampos(){
@@ -175,16 +208,22 @@ function limparCampos(){
 }
 
 async function carregarRegistros(){
-    const response=await fetch(API_URL+"?t="+Date.now());
-    registros=await response.json();
+    try{
+        const response=await fetch(API_URL+"?t="+Date.now());
+        registros=await response.json();
 
-    renderLista();
-    atualizarResumo();
+        if(!Array.isArray(registros)) registros=[];
+
+        renderLista();
+        atualizarResumo();
+    }catch(e){
+        console.log("Erro ao carregar");
+    }
 }
 
 function renderLista(){
     document.getElementById("lista").innerHTML=
-        registros.slice(-10).reverse().map((item,index)=>`
+        registros.slice(-10).reverse().map(item=>`
             <div class="item">
                 <b>${item.vendedor}</b><br>
                 ${item.cliente}<br>
@@ -192,9 +231,7 @@ function renderLista(){
                 Atendida: ${item.atendida}<br>
                 Venda: ${item.converteu}<br>
                 ${item.editado==="SIM" ? '<div class="editado">EDITADA</div>' : ''}
-                <button onclick="editarLigacao(${item.row})">
-                    Editar venda
-                </button>
+                <button onclick="editarLigacao(${item.row})">Editar venda</button>
             </div>
         `).join("");
 }
@@ -209,26 +246,86 @@ async function editarLigacao(row){
         body:JSON.stringify({
             action:"editar",
             row:row,
-            converteu:novoStatus.toUpperCase(),
-            editado:"SIM"
+            converteu:novoStatus.toUpperCase()
         })
     });
 
-    alert("Ligação editada com sucesso");
+    alert("Ligação editada");
     carregarRegistros();
 }
 
 function atualizarResumo(){
     const total=registros.length;
+    const atendidas=registros.filter(r=>r.atendida==="SIM").length;
     const vendas=registros.filter(r=>r.converteu==="SIM").length;
+    const taxa=total>0?((vendas/total)*100).toFixed(1):0;
 
     document.getElementById("resumo").innerHTML=`
-        <div>Total: ${total}</div>
-        <div>Vendas: ${vendas}</div>
+        <div>Total de ligações: ${total}</div>
+        <div>Atendidas: ${atendidas}</div>
+        <div>Convertidas: ${vendas}</div>
+        <div>Taxa geral: ${taxa}%</div>
     `;
+
+    atualizarRanking();
+}
+
+function atualizarRanking(){
+    const vendedores=["Joabe","João Gabriel","Fábio","Caio Henrique"];
+
+    const ranking=vendedores.map(nome=>{
+        const lig=registros.filter(r=>r.vendedor===nome).length;
+        const vendas=registros.filter(
+            r=>r.vendedor===nome && r.converteu==="SIM"
+        ).length;
+
+        const taxa=lig>0?((vendas/lig)*100).toFixed(1):0;
+
+        return {nome,lig,vendas,taxa};
+    }).sort((a,b)=>b.taxa-a.taxa);
+
+    document.getElementById("ranking").innerHTML=
+        ranking.map((r,i)=>`
+            <div class="rank-item">
+                <span>${i+1}º ${r.nome}</span>
+                <span>${r.taxa}% (${r.vendas}/${r.lig})</span>
+            </div>
+        `).join("");
+}
+
+function gerarPDF(){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(24);
+    doc.text("TAZZO", 85, 15);
+
+    doc.setFontSize(14);
+    doc.text("Relatório Diário", 70, 25);
+
+    let y=40;
+
+    doc.rect(10,y,190,10);
+    doc.text("Vendedor",15,y+7);
+    doc.text("Cliente",60,y+7);
+    doc.text("Venda",160,y+7);
+
+    y+=15;
+
+    registros.forEach(item=>{
+        doc.rect(10,y,190,10);
+        doc.text(item.vendedor,15,y+7);
+        doc.text(item.cliente.substring(0,20),60,y+7);
+        doc.text(item.converteu,160,y+7);
+        y+=10;
+    });
+
+    doc.save("relatorio_diario_tazzo.pdf");
 }
 
 setInterval(carregarRegistros,2000);
+
+verificarSessao();
 carregarRegistros();
 </script>
 
