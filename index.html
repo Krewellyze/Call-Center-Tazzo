@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TAZZO | Call Center V6 PREMIUM</title>
+<title>TAZZO | Call Center V6 FINAL</title>
 
 <link href="https://fonts.cdnfonts.com/css/bring-race" rel="stylesheet">
 
@@ -71,17 +71,6 @@ button{
     padding:10px;
     margin-bottom:10px;
     border-radius:10px;
-
-    opacity:0;
-    transform:translateY(20px);
-    animation:fadeUp .4s ease forwards;
-}
-
-@keyframes fadeUp{
-    to{
-        opacity:1;
-        transform:translateY(0);
-    }
 }
 
 /* 🔴 DUPLICIDADE VISUAL */
@@ -260,9 +249,9 @@ function render(){
     }
 
     document.getElementById("lista").innerHTML=
-    lista.reverse().map((r,i)=>`
+    lista.reverse().map(r=>`
 
-        <div class="item" style="animation-delay:${i*0.05}s">
+        <div class="item">
         <b>${r.vendedor}</b><br>
         Cliente: ${r.cliente}<br>
         Tel: ${r.telefone}<br>
