@@ -3,177 +3,143 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TAZZO | Call Center V3.0 Premium</title>
-
-<link href="https://fonts.cdnfonts.com/css/bring-race" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<title>TAZZO | Call Center V5 FINAL</title>
 
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-
-body{
-    min-height:100vh;
-    background:#000;
-    color:#fff;
-    font-family:Arial,sans-serif;
-    padding:20px;
-}
-
+body{background:#000;color:#fff;font-family:Arial;padding:20px}
 .container{max-width:520px;margin:auto}
+.card{background:#111;padding:15px;border-radius:10px;margin-bottom:15px}
 
-.logo{
-    text-align:center;
-    font-size:42px;
-    margin-bottom:20px;
-    font-family:'Bring Race',sans-serif;
+input,select,button{
+width:100%;
+padding:12px;
+margin-bottom:10px;
+border-radius:8px;
+border:none;
 }
 
-.white{color:#fff}
-.red{
-    color:#ff0000;
-    text-shadow:0 0 8px #ff0000;
-}
+button{background:red;color:#fff;font-weight:bold}
 
-.card{
-    background:rgba(255,255,255,.04);
-    border:1px solid rgba(255,0,0,.25);
-    border-radius:18px;
-    padding:20px;
-    margin-bottom:18px;
-}
-
-input,select,button,textarea{
-    width:100%;
-    padding:14px;
-    margin-bottom:12px;
-    border:none;
-    border-radius:12px;
-    font-size:16px;
-}
-
-input,select,textarea{
-    background:#111;
-    color:#fff;
-}
-
-button{
-    background:linear-gradient(90deg,#700000,#ff0000);
-    color:#fff;
-    font-weight:bold;
-    cursor:pointer;
-}
-
-.item{
-    padding:12px;
-    border-radius:12px;
-    background:#111;
-    margin-bottom:10px;
-}
-
-.rank-item{
-    display:flex;
-    justify-content:space-between;
-    padding:10px 0;
-}
+.item{background:#1a1a1a;padding:10px;margin-bottom:10px;border-radius:8px}
 
 #painelGerente{display:none}
 </style>
 </head>
+
 <body>
 
 <div class="container">
-
-<div class="logo">
-<span class="white">TA</span><span class="red">ZZ</span><span class="white">O</span>
-</div>
 
 <div class="card">
 <h3>Registrar Ligação</h3>
 
 <select id="vendedor">
 <option>Joabe</option>
-<option>João Gabriel</option>
+<option>João Vitor</option>
 <option>Fábio</option>
 <option>Caio Henrique</option>
 </select>
 
-<input type="text" id="cliente" placeholder="Nome do cliente">
-<input type="text" id="telefone" placeholder="Telefone">
-<input type="text" id="cpfcnpj" placeholder="CPF ou CNPJ">
+<input id="cliente" placeholder="Cliente">
+<input id="telefone" placeholder="Telefone">
+<input id="cpfcnpj" placeholder="CPF/CNPJ">
 
 <select id="atendida">
-<option value="SIM">Ligação atendida: SIM</option>
-<option value="NAO">Ligação atendida: NÃO</option>
+<option value="SIM">Atendida</option>
+<option value="NAO">Não atendida</option>
 </select>
 
 <select id="converteu">
-<option value="SIM">Converteu em venda: SIM</option>
-<option value="NAO">Converteu em venda: NÃO</option>
+<option value="NAO">Não virou venda</option>
+<option value="SIM">Virou venda</option>
 </select>
 
-<textarea id="obs" placeholder="Observações"></textarea>
+<input id="obs" placeholder="Observação">
 
-<button onclick="registrarLigacao()">Registrar ligação</button>
-</div>
-
-<button onclick="abrirPainelGerente()">Painel do Gerente</button>
-
-<div id="painelGerente" class="card">
-<h3>Painel Gerencial</h3>
-
-<div id="resumo"></div>
-
-<h3>Ranking por Conversão</h3>
-<div id="ranking"></div>
-
-<button onclick="gerarPDF()">Relatório Diário Premium</button>
-<button onclick="logoutGerente()">Sair</button>
+<button onclick="registrar()">Registrar ligação</button>
 </div>
 
 <div class="card">
-<h3>Últimas Ligações</h3>
+<h3>Filtro</h3>
+<select id="filtroVendedor" onchange="render()">
+<option value="TODOS">Todos</option>
+<option>Joabe</option>
+<option>João Vitor</option>
+<option>Fábio</option>
+<option>Caio Henrique</option>
+</select>
+</div>
+
+<button onclick="login()">Painel Gerente</button>
+
+<div id="painelGerente" class="card">
+<h3>Painel Gerente</h3>
+<button onclick="logout()">Sair</button>
+</div>
+
+<div class="card">
+<h3>Ligações</h3>
 <div id="lista"></div>
 </div>
 
 </div>
 
 <script>
-const API_URL="https://script.google.com/macros/s/AKfycbxpj0nN8Hv6F7fAr8CgC9Vp9IQgEYkT6otLUCwJMK-JRty1u0H1EjjBlKBJ3tpw4hxs/exec";
-const SENHA_GERENTE="gerentazzo";
+const API="https://script.google.com/macros/s/AKfycbxpj0nN8Hv6F7fAr8CgC9Vp9IQgEYkT6otLUCwJMK-JRty1u0H1EjjBlKBJ3tpw4hxs/exec";
+
+const SENHA="gerentazzo";
 
 let registros=[];
 
-function abrirPainelGerente(){
-    const senha=prompt("Digite a senha do gerente:");
-
-    if(senha===SENHA_GERENTE){
-        localStorage.setItem("gerente","true");
-        document.getElementById("painelGerente").style.display="block";
-        atualizarResumo();
-        renderLista();
-    }else{
-        alert("Senha incorreta");
-    }
+function hojeBR(){
+    const d=new Date();
+    return d.toLocaleDateString("pt-BR");
 }
 
-function verificarSessao(){
-    if(localStorage.getItem("gerente")==="true"){
+function login(){
+    const s=prompt("Senha:");
+    if(s===SENHA){
+        localStorage.setItem("gerente","1");
         document.getElementById("painelGerente").style.display="block";
     }
 }
 
-function logoutGerente(){
+function logout(){
     localStorage.removeItem("gerente");
     document.getElementById("painelGerente").style.display="none";
-    renderLista();
 }
 
-async function registrarLigacao(){
+function verificar(){
+    if(localStorage.getItem("gerente")==="1"){
+        document.getElementById("painelGerente").style.display="block";
+    }
+}
+
+async function registrar(){
+
+    const telefone=document.getElementById("telefone").value.trim();
+
+    if(!telefone){
+        alert("Informe o telefone");
+        return;
+    }
+
+    // 🔴 VERIFICA DUPLICIDADE
+    const existeDuplicado=registros.some(r=>{
+        return r.telefone === telefone &&
+               r.data.includes(hojeBR());
+    });
+
+    if(existeDuplicado){
+        alert("⚠️ Ligação duplicada para este telefone hoje");
+        return;
+    }
+
     const payload={
         action:"registrar",
         vendedor:document.getElementById("vendedor").value,
         cliente:document.getElementById("cliente").value,
-        telefone:document.getElementById("telefone").value,
+        telefone,
         cpfcnpj:document.getElementById("cpfcnpj").value,
         atendida:document.getElementById("atendida").value,
         converteu:document.getElementById("converteu").value,
@@ -181,164 +147,106 @@ async function registrarLigacao(){
         data:new Date().toLocaleString("pt-BR")
     };
 
-    const response=await fetch(API_URL,{
+    await fetch(API,{
         method:"POST",
         body:JSON.stringify(payload)
     });
 
-    const resultado=await response.json();
+    alert("Ligação cadastrada");
 
-    if(resultado.status==="ok"){
-        limparCampos();
-        carregarRegistros();
-        alert("Ligação registrada");
-    }else{
-        alert("Erro ao registrar");
+    document.querySelectorAll("input").forEach(i=>i.value="");
+
+    carregar();
+}
+
+async function carregar(){
+    const res=await fetch(API+"?t="+Date.now());
+    registros=await res.json();
+    render();
+}
+
+function render(){
+
+    const gerente=localStorage.getItem("gerente")==="1";
+    const filtro=document.getElementById("filtroVendedor").value;
+
+    let lista=registros;
+
+    if(filtro!=="TODOS"){
+        lista=lista.filter(r=>r.vendedor===filtro);
     }
+
+    document.getElementById("lista").innerHTML=
+    lista.reverse().map(r=>`
+
+        <div class="item">
+        <b>${r.vendedor}</b><br>
+        Cliente: ${r.cliente}<br>
+        Tel: ${r.telefone}<br>
+        CPF: ${r.cpfcnpj}<br>
+        Atendida: ${r.atendida}<br>
+        Venda: ${r.converteu}<br>
+        Obs: ${r.obs}<br>
+
+        <button onclick="editar(${r.row})">Editar</button>
+
+        ${gerente ? `<button onclick="excluir(${r.row})">Excluir</button>` : ""}
+
+        ${r.editado==="SIM" ? "<div style='color:yellow'>EDITADO</div>" : ""}
+        </div>
+
+    `).join("");
 }
 
-function limparCampos(){
-    document.getElementById("cliente").value="";
-    document.getElementById("telefone").value="";
-    document.getElementById("cpfcnpj").value="";
-    document.getElementById("obs").value="";
-}
+async function editar(row){
 
-async function editarLigacao(row){
-    const novoStatus=prompt("Digite SIM ou NAO");
+    const atual=registros.find(r=>r.row==row);
 
-    if(!novoStatus) return;
+    const vendedor=prompt("Vendedor:", atual.vendedor);
+    const cliente=prompt("Cliente:", atual.cliente);
+    const telefone=prompt("Telefone:", atual.telefone);
+    const cpfcnpj=prompt("CPF/CNPJ:", atual.cpfcnpj);
+    const atendida=prompt("Atendida (SIM/NAO):", atual.atendida);
+    const converteu=prompt("Venda (SIM/NAO):", atual.converteu);
+    const obs=prompt("Obs:", atual.obs);
 
-    await fetch(API_URL,{
+    await fetch(API,{
         method:"POST",
         body:JSON.stringify({
-            action:"editar",
-            row:row,
-            converteu:novoStatus.toUpperCase()
+            action:"editarCompleto",
+            row,
+            vendedor,
+            cliente,
+            telefone,
+            cpfcnpj,
+            atendida,
+            converteu,
+            obs
         })
     });
 
-    carregarRegistros();
-    alert("Ligação editada");
+    carregar();
 }
 
-async function excluirLigacao(row){
-    if(!confirm("Deseja excluir esta ligação?")) return;
+async function excluir(row){
 
-    await fetch(API_URL,{
+    if(!confirm("Excluir ligação?")) return;
+
+    await fetch(API,{
         method:"POST",
         body:JSON.stringify({
             action:"excluir",
-            row:row
+            row
         })
     });
 
-    carregarRegistros();
-    alert("Ligação excluída");
+    carregar();
 }
 
-async function carregarRegistros(){
-    const response=await fetch(API_URL);
-    registros=await response.json();
+setInterval(carregar,3000);
 
-    renderLista();
-    atualizarResumo();
-}
-
-function renderLista(){
-    const gerente=localStorage.getItem("gerente")==="true";
-
-    document.getElementById("lista").innerHTML=
-        registros.length===0
-        ? "<div class='item'>Nenhuma ligação registrada hoje</div>"
-        : registros.slice(-10).reverse().map(item=>`
-            <div class="item">
-                <b>${item.vendedor}</b><br>
-                ${item.cliente}<br>
-                ${item.telefone}<br>
-                Atendida: ${item.atendida}<br>
-                Venda: ${item.converteu}<br>
-                ${item.editado==="SIM" ? "<b>EDITADO</b><br>" : ""}
-                <button onclick="editarLigacao(${item.row})">
-                    Editar Venda
-                </button>
-                ${
-                    gerente
-                    ? `<button onclick="excluirLigacao(${item.row})">
-                        Excluir
-                       </button>`
-                    : ""
-                }
-            </div>
-        `).join("");
-}
-
-function atualizarResumo(){
-    const total=registros.length;
-    const atendidas=registros.filter(r=>r.atendida==="SIM").length;
-    const vendas=registros.filter(r=>r.converteu==="SIM").length;
-    const taxa=total>0?((vendas/total)*100).toFixed(1):0;
-
-    document.getElementById("resumo").innerHTML=`
-        <div>Total de ligações: ${total}</div>
-        <div>Atendidas: ${atendidas}</div>
-        <div>Convertidas: ${vendas}</div>
-        <div>Taxa geral: ${taxa}%</div>
-    `;
-
-    atualizarRanking();
-}
-
-function atualizarRanking(){
-    const vendedores=["Joabe","João Gabriel","Fábio","Caio Henrique"];
-
-    const ranking=vendedores.map(nome=>{
-        const lig=registros.filter(r=>r.vendedor===nome).length;
-        const vendas=registros.filter(
-            r=>r.vendedor===nome && r.converteu==="SIM"
-        ).length;
-
-        const taxa=lig>0?((vendas/lig)*100).toFixed(1):0;
-
-        return {nome,lig,vendas,taxa};
-    }).sort((a,b)=>b.taxa-a.taxa);
-
-    document.getElementById("ranking").innerHTML=
-        ranking.map((r,i)=>`
-            <div class="rank-item">
-                <span>${i+1}º ${r.nome}</span>
-                <span>${r.taxa}% (${r.vendas}/${r.lig})</span>
-            </div>
-        `).join("");
-}
-
-function gerarPDF(){
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    doc.setFontSize(24);
-    doc.text("TAZZO", 90, 15);
-
-    doc.setFontSize(14);
-    doc.text("Relatório Diário Premium", 60, 25);
-
-    let y=40;
-
-    registros.forEach(item=>{
-        doc.text(
-            `${item.vendedor} - ${item.cliente} - ${item.converteu}`,
-            10,y
-        );
-        y+=10;
-    });
-
-    doc.save("relatorio_diario_tazzo.pdf");
-}
-
-setInterval(carregarRegistros,3000);
-
-verificarSessao();
-carregarRegistros();
+verificar();
+carregar();
 </script>
 
 </body>
