@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TAZZO | Call Center V6 FINAL</title>
+<title>TAZZO | Call Center V7 FINAL</title>
 
 <link href="https://fonts.cdnfonts.com/css/bring-race" rel="stylesheet">
 
@@ -73,7 +73,11 @@ button{
     border-radius:10px;
 }
 
-/* 🔴 DUPLICIDADE VISUAL */
+.alerta{
+    border:2px solid red;
+    box-shadow:0 0 10px red;
+}
+
 .input-erro{
     border:2px solid red !important;
     box-shadow:0 0 8px red;
@@ -109,8 +113,8 @@ button{
 </select>
 
 <input id="cliente" placeholder="Cliente">
-
 <input id="telefone" placeholder="Telefone">
+
 <div id="erroDuplicado" class="erro-msg" style="display:none">
 ⚠️ Ligação duplicada hoje
 </div>
@@ -196,7 +200,6 @@ function verificar(){
 async function registrar(){
 
     const telefone=document.getElementById("telefone").value.trim();
-
     if(!telefone) return;
 
     const duplicado=registros.some(r=>{
@@ -242,17 +245,41 @@ function render(){
     const gerente=localStorage.getItem("gerente")==="1";
     const filtro=document.getElementById("filtroVendedor").value;
 
-    let lista=registros;
+    let lista=registros.filter(r=>r.data && r.data.includes(hojeBR()));
 
     if(filtro!=="TODOS"){
         lista=lista.filter(r=>r.vendedor===filtro);
     }
 
-    document.getElementById("lista").innerHTML=
-    lista.reverse().map(r=>`
+    const resumo={};
+
+    lista.forEach(r=>{
+        if(!resumo[r.vendedor]){
+            resumo[r.vendedor]={total:0,vendas:0};
+        }
+        resumo[r.vendedor].total++;
+        if(r.converteu==="SIM"){
+            resumo[r.vendedor].vendas++;
+        }
+    });
+
+    const resumoHTML=Object.keys(resumo).map(v=>{
+        const baixo = resumo[v].total < 10;
+
+        return `
+        <div class="item ${baixo ? 'alerta' : ''}">
+            <b>${v}</b><br>
+            Ligações: ${resumo[v].total}<br>
+            Vendas: ${resumo[v].vendas}
+            ${baixo ? "<div style='color:red'>⚠️ Baixa performance</div>" : ""}
+        </div>`;
+    }).join("");
+
+    const listaHTML=lista.reverse().map(r=>`
 
         <div class="item">
         <b>${r.vendedor}</b><br>
+        📅 ${r.data}<br>
         Cliente: ${r.cliente}<br>
         Tel: ${r.telefone}<br>
         CPF: ${r.cpfcnpj}<br>
@@ -268,6 +295,9 @@ function render(){
         </div>
 
     `).join("");
+
+    document.getElementById("lista").innerHTML=
+        `<h3>Resumo do Dia</h3>${resumoHTML}<hr><h3>Ligações de Hoje</h3>${listaHTML}`;
 }
 
 async function editar(row){
