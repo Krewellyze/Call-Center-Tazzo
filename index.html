@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TAZZO | Call Center V8 FINAL FIX</title>
+<title>TAZZO | Call Center V7 FINAL STABLE</title>
 
 <link href="https://fonts.cdnfonts.com/css/bring-race" rel="stylesheet">
 
@@ -28,21 +28,16 @@ body{
 
 .container{max-width:520px;margin:auto}
 
-.logo{
-    text-align:center;
-    font-size:42px;
-    margin-bottom:18px;
-}
-.logo span{font-family:'Bring Race',sans-serif !important}
+.logo{text-align:center;font-size:42px;margin-bottom:18px}
+.logo span{font-family:'Bring Race'}
 .white{color:#fff}
-.red{color:#ff0000;text-shadow:0 0 8px #ff0000}
+.red{color:#ff0000}
 
 .card{
     background:rgba(255,255,255,.08);
     border-radius:15px;
     padding:15px;
     margin-bottom:15px;
-    box-shadow:0 0 15px rgba(255,0,0,.2);
 }
 
 .item{
@@ -51,6 +46,18 @@ body{
     margin-bottom:10px;
     border-radius:10px;
 }
+
+.input-erro{
+    border:2px solid red;
+}
+
+.erro-msg{
+    color:#ff4d4d;
+    font-size:14px;
+    display:none;
+}
+
+#painelGerente{display:none}
 </style>
 </head>
 
@@ -62,11 +69,65 @@ body{
 <span class="white">TA</span><span class="red">ZZ</span><span class="white">O</span>
 </div>
 
+<!-- REGISTRO -->
+<div class="card">
+<h3>Registrar Ligação</h3>
+
+<select id="vendedor">
+<option>Joabe</option>
+<option>João Vitor</option>
+<option>Fábio</option>
+<option>Caio Henrique</option>
+</select>
+
+<input id="cliente" placeholder="Cliente">
+<input id="telefone" placeholder="Telefone">
+<div id="erroDuplicado" class="erro-msg">⚠️ Ligação duplicada hoje</div>
+
+<input id="cpfcnpj" placeholder="CPF/CNPJ">
+
+<select id="atendida">
+<option value="SIM">Atendida</option>
+<option value="NAO">Não atendida</option>
+</select>
+
+<select id="converteu">
+<option value="NAO">Não virou venda</option>
+<option value="SIM">Virou venda</option>
+</select>
+
+<input id="obs" placeholder="Observação">
+
+<button onclick="registrar()">Registrar ligação</button>
+</div>
+
+<!-- RESUMO -->
 <div class="card">
 <h3>Resumo do Dia</h3>
 <div id="resumo"></div>
 </div>
 
+<!-- FILTRO -->
+<div class="card">
+<h3>Filtro</h3>
+<select id="filtroVendedor" onchange="render()">
+<option value="TODOS">Todos</option>
+<option>Joabe</option>
+<option>João Vitor</option>
+<option>Fábio</option>
+<option>Caio Henrique</option>
+</select>
+</div>
+
+<button onclick="login()">Painel Gerente</button>
+
+<!-- GERENTE -->
+<div id="painelGerente" class="card">
+<h3>Painel Gerente</h3>
+<button onclick="logout()">Sair</button>
+</div>
+
+<!-- LISTA -->
 <div class="card">
 <h3>Ligações</h3>
 <div id="lista"></div>
@@ -76,20 +137,76 @@ body{
 
 <script>
 const API="https://script.google.com/macros/s/AKfycbxpj0nN8Hv6F7fAr8CgC9Vp9IQgEYkT6otLUCwJMK-JRty1u0H1EjjBlKBJ3tpw4hxs/exec";
+const SENHA="gerentazzo";
 
 let registros=[];
 
-// 🔥 NORMALIZA DATA CORRETAMENTE
+function hoje(){
+    return new Date().toLocaleDateString("pt-BR");
+}
+
 function dataBR(d){
-    try{
-        return new Date(d).toLocaleDateString("pt-BR");
-    }catch{
-        return "";
+    return new Date(d).toLocaleDateString("pt-BR");
+}
+
+function limparErro(){
+    telefone.classList.remove("input-erro");
+    erroDuplicado.style.display="none";
+}
+
+telefone.addEventListener("input", limparErro);
+
+function login(){
+    const s=prompt("Senha:");
+    if(s===SENHA){
+        localStorage.setItem("gerente","1");
+        painelGerente.style.display="block";
     }
 }
 
-function hoje(){
-    return new Date().toLocaleDateString("pt-BR");
+function logout(){
+    localStorage.removeItem("gerente");
+    painelGerente.style.display="none";
+}
+
+function verificar(){
+    if(localStorage.getItem("gerente")==="1"){
+        painelGerente.style.display="block";
+    }
+}
+
+async function registrar(){
+
+    const tel=telefone.value.trim();
+    if(!tel) return;
+
+    const duplicado=registros.some(r=>{
+        return r.telefone===tel && dataBR(r.data)===hoje();
+    });
+
+    if(duplicado){
+        telefone.classList.add("input-erro");
+        erroDuplicado.style.display="block";
+        return;
+    }
+
+    await fetch(API,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"registrar",
+            vendedor:vendedor.value,
+            cliente:cliente.value,
+            telefone:tel,
+            cpfcnpj:cpfcnpj.value,
+            atendida:atendida.value,
+            converteu:converteu.value,
+            obs:obs.value,
+            data:new Date().toISOString()
+        })
+    });
+
+    document.querySelectorAll("input").forEach(i=>i.value="");
+    carregar();
 }
 
 async function carregar(){
@@ -100,11 +217,14 @@ async function carregar(){
 
 function render(){
 
-    // ✅ FILTRO CORRETO
-    let hojeLista = registros.filter(r=>{
-        if(!r.data) return false;
-        return dataBR(r.data) === hoje();
-    });
+    const gerente=localStorage.getItem("gerente")==="1";
+    const filtro=filtroVendedor.value;
+
+    let hojeLista = registros.filter(r=>dataBR(r.data)===hoje());
+
+    if(filtro!=="TODOS"){
+        hojeLista = hojeLista.filter(r=>r.vendedor===filtro);
+    }
 
     // 🔥 RESUMO
     const resumo={};
@@ -113,44 +233,82 @@ function render(){
         if(!resumo[r.vendedor]){
             resumo[r.vendedor]={total:0,vendas:0};
         }
-
         resumo[r.vendedor].total++;
-
-        if(r.converteu==="SIM"){
-            resumo[r.vendedor].vendas++;
-        }
+        if(r.converteu==="SIM") resumo[r.vendedor].vendas++;
     });
 
-    const ranking = Object.entries(resumo).map(([v,d])=>{
-        const taxa = d.total ? (d.vendas/d.total)*100 : 0;
-        return {v, ...d, taxa};
-    });
+    resumo.innerHTML = "";
 
-    // 🔥 CARDS RESUMO
     document.getElementById("resumo").innerHTML =
-        ranking.map(r=>`
-        <div class="item">
-        <b>${r.v}</b><br>
-        Ligações: ${r.total}<br>
-        Vendas: ${r.vendas}<br>
-        Conversão: ${r.taxa.toFixed(1)}%
-        </div>
-    `).join("") || "Sem registros hoje";
+        Object.entries(resumo).map(([v,d])=>{
+            const taxa = d.total ? (d.vendas/d.total)*100 : 0;
+            return `
+            <div class="item">
+            <b>${v}</b><br>
+            Ligações: ${d.total}<br>
+            Vendas: ${d.vendas}<br>
+            Conversão: ${taxa.toFixed(1)}%
+            </div>`;
+        }).join("") || "Sem ligações hoje";
 
-    // 🔥 LISTA DE LIGAÇÕES
+    // 🔥 LISTA
     document.getElementById("lista").innerHTML =
-        hojeLista.reverse().map(r=>`
+    hojeLista.reverse().map(r=>`
+
         <div class="item">
         <b>${r.vendedor}</b><br>
         📅 ${dataBR(r.data)}<br>
         Cliente: ${r.cliente}<br>
         Tel: ${r.telefone}<br>
-        Venda: ${r.converteu}
+        Venda: ${r.converteu}<br>
+
+        <button onclick="editar(${r.row})">Editar</button>
+        ${gerente ? `<button onclick="excluir(${r.row})">Excluir</button>` : ""}
+        ${r.editado==="SIM" ? "<div style='color:yellow'>EDITADO</div>" : ""}
         </div>
+
     `).join("") || "Nenhuma ligação hoje";
 }
 
+async function editar(row){
+
+    const atual=registros.find(r=>r.row==row);
+
+    await fetch(API,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"editarCompleto",
+            row,
+            vendedor:prompt("Vendedor:", atual.vendedor),
+            cliente:prompt("Cliente:", atual.cliente),
+            telefone:prompt("Telefone:", atual.telefone),
+            cpfcnpj:prompt("CPF:", atual.cpfcnpj),
+            atendida:prompt("Atendida:", atual.atendida),
+            converteu:prompt("Venda:", atual.converteu),
+            obs:prompt("Obs:", atual.obs)
+        })
+    });
+
+    carregar();
+}
+
+async function excluir(row){
+    if(!confirm("Excluir?")) return;
+
+    await fetch(API,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"excluir",
+            row
+        })
+    });
+
+    carregar();
+}
+
 setInterval(carregar,3000);
+
+verificar();
 carregar();
 </script>
 
