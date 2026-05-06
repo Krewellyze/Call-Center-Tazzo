@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TAZZO | Call Center V7 FINAL</title>
+<title>TAZZO | Call Center V7.2 FINAL</title>
 
 <link href="https://fonts.cdnfonts.com/css/bring-race" rel="stylesheet">
 
@@ -79,15 +79,13 @@ button{
 }
 
 .input-erro{
-    border:2px solid red !important;
-    box-shadow:0 0 8px red;
+    border:2px solid red;
 }
 
 .erro-msg{
-    color:#ff4d4d;
-    font-size:14px;
-    margin-top:-8px;
-    margin-bottom:10px;
+    color:red;
+    font-size:13px;
+    margin-bottom:8px;
 }
 
 #painelGerente{display:none}
@@ -114,7 +112,6 @@ button{
 
 <input id="cliente" placeholder="Cliente">
 <input id="telefone" placeholder="Telefone">
-
 <div id="erroDuplicado" class="erro-msg" style="display:none">
 ⚠️ Ligação duplicada hoje
 </div>
@@ -155,6 +152,11 @@ button{
 </div>
 
 <div class="card">
+<h3>Resumo do Dia</h3>
+<div id="resumo"></div>
+</div>
+
+<div class="card">
 <h3>Ligações</h3>
 <div id="lista"></div>
 </div>
@@ -171,13 +173,7 @@ function hojeBR(){
     return new Date().toLocaleDateString("pt-BR");
 }
 
-function limparErro(){
-    document.getElementById("telefone").classList.remove("input-erro");
-    document.getElementById("erroDuplicado").style.display="none";
-}
-
-document.getElementById("telefone").addEventListener("input", limparErro);
-
+// LOGIN
 function login(){
     const s=prompt("Senha:");
     if(s===SENHA){
@@ -185,25 +181,18 @@ function login(){
         document.getElementById("painelGerente").style.display="block";
     }
 }
-
 function logout(){
     localStorage.removeItem("gerente");
     document.getElementById("painelGerente").style.display="none";
 }
 
-function verificar(){
-    if(localStorage.getItem("gerente")==="1"){
-        document.getElementById("painelGerente").style.display="block";
-    }
-}
-
+// REGISTRAR
 async function registrar(){
 
     const telefone=document.getElementById("telefone").value.trim();
-    if(!telefone) return;
 
     const duplicado=registros.some(r=>{
-        return r.telefone===telefone && r.data.includes(hojeBR());
+        return r.telefone===telefone && String(r.data).includes(hojeBR());
     });
 
     if(duplicado){
@@ -230,22 +219,25 @@ async function registrar(){
     });
 
     document.querySelectorAll("input").forEach(i=>i.value="");
-
     carregar();
 }
 
+// CARREGAR
 async function carregar(){
     const res=await fetch(API+"?t="+Date.now());
     registros=await res.json();
     render();
 }
 
+// RENDER
 function render(){
 
     const gerente=localStorage.getItem("gerente")==="1";
     const filtro=document.getElementById("filtroVendedor").value;
 
-    let lista=registros.filter(r=>r.data && r.data.includes(hojeBR()));
+    let lista=registros.filter(r=>{
+        return r.data && String(r.data).includes(hojeBR());
+    });
 
     if(filtro!=="TODOS"){
         lista=lista.filter(r=>r.vendedor===filtro);
@@ -258,59 +250,53 @@ function render(){
             resumo[r.vendedor]={total:0,vendas:0};
         }
         resumo[r.vendedor].total++;
-        if(r.converteu==="SIM"){
-            resumo[r.vendedor].vendas++;
-        }
+        if(r.converteu==="SIM") resumo[r.vendedor].vendas++;
     });
 
-    const resumoHTML=Object.keys(resumo).map(v=>{
-        const baixo = resumo[v].total < 10;
+    const ranking = Object.entries(resumo).map(([v,d])=>{
+        const taxa = d.total ? (d.vendas/d.total)*100 : 0;
+        return {v, ...d, taxa};
+    }).sort((a,b)=>b.total-a.total);
 
+    document.getElementById("resumo").innerHTML = ranking.map(r=>{
+        const alerta = r.total < 10;
         return `
-        <div class="item ${baixo ? 'alerta' : ''}">
-            <b>${v}</b><br>
-            Ligações: ${resumo[v].total}<br>
-            Vendas: ${resumo[v].vendas}
-            ${baixo ? "<div style='color:red'>⚠️ Baixa performance</div>" : ""}
+        <div class="item ${alerta?'alerta':''}">
+        <b>${r.v}</b><br>
+        Ligações: ${r.total}<br>
+        Vendas: ${r.vendas}<br>
+        Conversão: ${r.taxa.toFixed(1)}%
+        ${alerta?"<div style='color:red'>⚠️ Baixa performance</div>":""}
         </div>`;
     }).join("");
 
-    const listaHTML=lista.reverse().map(r=>`
-
+    document.getElementById("lista").innerHTML = lista.reverse().map(r=>`
         <div class="item">
         <b>${r.vendedor}</b><br>
         📅 ${r.data}<br>
         Cliente: ${r.cliente}<br>
         Tel: ${r.telefone}<br>
-        CPF: ${r.cpfcnpj}<br>
-        Atendida: ${r.atendida}<br>
         Venda: ${r.converteu}<br>
-        Obs: ${r.obs}<br>
 
         <button onclick="editar(${r.row})">Editar</button>
+        ${gerente?`<button onclick="excluir(${r.row})">Excluir</button>`:""}
 
-        ${gerente ? `<button onclick="excluir(${r.row})">Excluir</button>` : ""}
-
-        ${r.editado==="SIM" ? "<div style='color:yellow'>EDITADO</div>" : ""}
+        ${r.editado==="SIM"?"<div style='color:yellow'>EDITADO</div>":""}
         </div>
-
     `).join("");
-
-    document.getElementById("lista").innerHTML=
-        `<h3>Resumo do Dia</h3>${resumoHTML}<hr><h3>Ligações de Hoje</h3>${listaHTML}`;
 }
 
+// EDITAR
 async function editar(row){
+    const r=registros.find(x=>x.row==row);
 
-    const atual=registros.find(r=>r.row==row);
-
-    const vendedor=prompt("Vendedor:", atual.vendedor);
-    const cliente=prompt("Cliente:", atual.cliente);
-    const telefone=prompt("Telefone:", atual.telefone);
-    const cpfcnpj=prompt("CPF/CNPJ:", atual.cpfcnpj);
-    const atendida=prompt("Atendida (SIM/NAO):", atual.atendida);
-    const converteu=prompt("Venda (SIM/NAO):", atual.converteu);
-    const obs=prompt("Obs:", atual.obs);
+    const vendedor=prompt("Vendedor:",r.vendedor);
+    const cliente=prompt("Cliente:",r.cliente);
+    const telefone=prompt("Telefone:",r.telefone);
+    const cpfcnpj=prompt("CPF:",r.cpfcnpj);
+    const atendida=prompt("Atendida:",r.atendida);
+    const converteu=prompt("Venda:",r.converteu);
+    const obs=prompt("Obs:",r.obs);
 
     await fetch(API,{
         method:"POST",
@@ -330,8 +316,9 @@ async function editar(row){
     carregar();
 }
 
+// EXCLUIR
 async function excluir(row){
-    if(!confirm("Excluir ligação?")) return;
+    if(!confirm("Excluir?")) return;
 
     await fetch(API,{
         method:"POST",
@@ -345,8 +332,6 @@ async function excluir(row){
 }
 
 setInterval(carregar,3000);
-
-verificar();
 carregar();
 </script>
 
