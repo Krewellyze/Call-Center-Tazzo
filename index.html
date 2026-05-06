@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TAZZO | Call Center V7.2 FINAL</title>
+<title>TAZZO | Call Center V8 FINAL FIX</title>
 
 <link href="https://fonts.cdnfonts.com/css/bring-race" rel="stylesheet">
 
@@ -43,27 +43,6 @@ body{
     padding:15px;
     margin-bottom:15px;
     box-shadow:0 0 15px rgba(255,0,0,.2);
-    backdrop-filter:blur(10px);
-}
-
-input,select,button{
-    width:100%;
-    padding:12px;
-    margin-bottom:10px;
-    border-radius:10px;
-    border:none;
-}
-
-input,select{
-    background:rgba(0,0,0,.4);
-    color:#fff;
-}
-
-button{
-    background:linear-gradient(90deg,#ff0000,#8b0000);
-    color:#fff;
-    font-weight:bold;
-    cursor:pointer;
 }
 
 .item{
@@ -72,23 +51,6 @@ button{
     margin-bottom:10px;
     border-radius:10px;
 }
-
-.alerta{
-    border:2px solid red;
-    box-shadow:0 0 10px red;
-}
-
-.input-erro{
-    border:2px solid red;
-}
-
-.erro-msg{
-    color:red;
-    font-size:13px;
-    margin-bottom:8px;
-}
-
-#painelGerente{display:none}
 </style>
 </head>
 
@@ -98,57 +60,6 @@ button{
 
 <div class="logo">
 <span class="white">TA</span><span class="red">ZZ</span><span class="white">O</span>
-</div>
-
-<div class="card">
-<h3>Registrar Ligação</h3>
-
-<select id="vendedor">
-<option>Joabe</option>
-<option>João Vitor</option>
-<option>Fábio</option>
-<option>Caio Henrique</option>
-</select>
-
-<input id="cliente" placeholder="Cliente">
-<input id="telefone" placeholder="Telefone">
-<div id="erroDuplicado" class="erro-msg" style="display:none">
-⚠️ Ligação duplicada hoje
-</div>
-
-<input id="cpfcnpj" placeholder="CPF/CNPJ">
-
-<select id="atendida">
-<option value="SIM">Atendida</option>
-<option value="NAO">Não atendida</option>
-</select>
-
-<select id="converteu">
-<option value="NAO">Não virou venda</option>
-<option value="SIM">Virou venda</option>
-</select>
-
-<input id="obs" placeholder="Observação">
-
-<button onclick="registrar()">Registrar ligação</button>
-</div>
-
-<div class="card">
-<h3>Filtro</h3>
-<select id="filtroVendedor" onchange="render()">
-<option value="TODOS">Todos</option>
-<option>Joabe</option>
-<option>João Vitor</option>
-<option>Fábio</option>
-<option>Caio Henrique</option>
-</select>
-</div>
-
-<button onclick="login()">Painel Gerente</button>
-
-<div id="painelGerente" class="card">
-<h3>Painel Gerente</h3>
-<button onclick="logout()">Sair</button>
 </div>
 
 <div class="card">
@@ -165,170 +76,78 @@ button{
 
 <script>
 const API="https://script.google.com/macros/s/AKfycbxpj0nN8Hv6F7fAr8CgC9Vp9IQgEYkT6otLUCwJMK-JRty1u0H1EjjBlKBJ3tpw4hxs/exec";
-const SENHA="gerentazzo";
 
 let registros=[];
 
-function hojeBR(){
+// 🔥 NORMALIZA DATA CORRETAMENTE
+function dataBR(d){
+    try{
+        return new Date(d).toLocaleDateString("pt-BR");
+    }catch{
+        return "";
+    }
+}
+
+function hoje(){
     return new Date().toLocaleDateString("pt-BR");
 }
 
-// LOGIN
-function login(){
-    const s=prompt("Senha:");
-    if(s===SENHA){
-        localStorage.setItem("gerente","1");
-        document.getElementById("painelGerente").style.display="block";
-    }
-}
-function logout(){
-    localStorage.removeItem("gerente");
-    document.getElementById("painelGerente").style.display="none";
-}
-
-// REGISTRAR
-async function registrar(){
-
-    const telefone=document.getElementById("telefone").value.trim();
-
-    const duplicado=registros.some(r=>{
-        return r.telefone===telefone && String(r.data).includes(hojeBR());
-    });
-
-    if(duplicado){
-        document.getElementById("telefone").classList.add("input-erro");
-        document.getElementById("erroDuplicado").style.display="block";
-        return;
-    }
-
-    const payload={
-        action:"registrar",
-        vendedor:document.getElementById("vendedor").value,
-        cliente:document.getElementById("cliente").value,
-        telefone,
-        cpfcnpj:document.getElementById("cpfcnpj").value,
-        atendida:document.getElementById("atendida").value,
-        converteu:document.getElementById("converteu").value,
-        obs:document.getElementById("obs").value,
-        data:new Date().toLocaleString("pt-BR")
-    };
-
-    await fetch(API,{
-        method:"POST",
-        body:JSON.stringify(payload)
-    });
-
-    document.querySelectorAll("input").forEach(i=>i.value="");
-    carregar();
-}
-
-// CARREGAR
 async function carregar(){
     const res=await fetch(API+"?t="+Date.now());
     registros=await res.json();
     render();
 }
 
-// RENDER
 function render(){
 
-    const gerente=localStorage.getItem("gerente")==="1";
-    const filtro=document.getElementById("filtroVendedor").value;
-
-    let lista=registros.filter(r=>{
-        return r.data && String(r.data).includes(hojeBR());
+    // ✅ FILTRO CORRETO
+    let hojeLista = registros.filter(r=>{
+        if(!r.data) return false;
+        return dataBR(r.data) === hoje();
     });
 
-    if(filtro!=="TODOS"){
-        lista=lista.filter(r=>r.vendedor===filtro);
-    }
-
+    // 🔥 RESUMO
     const resumo={};
 
-    lista.forEach(r=>{
+    hojeLista.forEach(r=>{
         if(!resumo[r.vendedor]){
             resumo[r.vendedor]={total:0,vendas:0};
         }
+
         resumo[r.vendedor].total++;
-        if(r.converteu==="SIM") resumo[r.vendedor].vendas++;
+
+        if(r.converteu==="SIM"){
+            resumo[r.vendedor].vendas++;
+        }
     });
 
     const ranking = Object.entries(resumo).map(([v,d])=>{
         const taxa = d.total ? (d.vendas/d.total)*100 : 0;
         return {v, ...d, taxa};
-    }).sort((a,b)=>b.total-a.total);
+    });
 
-    document.getElementById("resumo").innerHTML = ranking.map(r=>{
-        const alerta = r.total < 10;
-        return `
-        <div class="item ${alerta?'alerta':''}">
+    // 🔥 CARDS RESUMO
+    document.getElementById("resumo").innerHTML =
+        ranking.map(r=>`
+        <div class="item">
         <b>${r.v}</b><br>
         Ligações: ${r.total}<br>
         Vendas: ${r.vendas}<br>
         Conversão: ${r.taxa.toFixed(1)}%
-        ${alerta?"<div style='color:red'>⚠️ Baixa performance</div>":""}
-        </div>`;
-    }).join("");
+        </div>
+    `).join("") || "Sem registros hoje";
 
-    document.getElementById("lista").innerHTML = lista.reverse().map(r=>`
+    // 🔥 LISTA DE LIGAÇÕES
+    document.getElementById("lista").innerHTML =
+        hojeLista.reverse().map(r=>`
         <div class="item">
         <b>${r.vendedor}</b><br>
-        📅 ${r.data}<br>
+        📅 ${dataBR(r.data)}<br>
         Cliente: ${r.cliente}<br>
         Tel: ${r.telefone}<br>
-        Venda: ${r.converteu}<br>
-
-        <button onclick="editar(${r.row})">Editar</button>
-        ${gerente?`<button onclick="excluir(${r.row})">Excluir</button>`:""}
-
-        ${r.editado==="SIM"?"<div style='color:yellow'>EDITADO</div>":""}
+        Venda: ${r.converteu}
         </div>
-    `).join("");
-}
-
-// EDITAR
-async function editar(row){
-    const r=registros.find(x=>x.row==row);
-
-    const vendedor=prompt("Vendedor:",r.vendedor);
-    const cliente=prompt("Cliente:",r.cliente);
-    const telefone=prompt("Telefone:",r.telefone);
-    const cpfcnpj=prompt("CPF:",r.cpfcnpj);
-    const atendida=prompt("Atendida:",r.atendida);
-    const converteu=prompt("Venda:",r.converteu);
-    const obs=prompt("Obs:",r.obs);
-
-    await fetch(API,{
-        method:"POST",
-        body:JSON.stringify({
-            action:"editarCompleto",
-            row,
-            vendedor,
-            cliente,
-            telefone,
-            cpfcnpj,
-            atendida,
-            converteu,
-            obs
-        })
-    });
-
-    carregar();
-}
-
-// EXCLUIR
-async function excluir(row){
-    if(!confirm("Excluir?")) return;
-
-    await fetch(API,{
-        method:"POST",
-        body:JSON.stringify({
-            action:"excluir",
-            row
-        })
-    });
-
-    carregar();
+    `).join("") || "Nenhuma ligação hoje";
 }
 
 setInterval(carregar,3000);
