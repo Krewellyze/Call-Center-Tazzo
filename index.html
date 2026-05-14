@@ -42,14 +42,12 @@ body{
     backdrop-filter:blur(12px);
 }
 
-/* 🔥 GRID ORGANIZADO */
 .grid-2{
     display:grid;
     grid-template-columns:1fr 1fr;
     gap:10px;
 }
 
-/* 🔥 INPUT PREMIUM */
 input,select{
     width:100%;
     padding:12px;
@@ -59,7 +57,7 @@ input,select{
     color:#fff;
     font-size:14px;
     outline:none;
-    transition:0.2s;
+    transition:.2s;
 }
 
 input::placeholder{
@@ -72,7 +70,6 @@ input:focus,select:focus{
     background:rgba(0,0,0,.5);
 }
 
-/* 🔥 BOTÃO PREMIUM */
 button{
     width:100%;
     padding:14px;
@@ -83,7 +80,7 @@ button{
     font-weight:bold;
     font-size:15px;
     cursor:pointer;
-    transition:0.2s;
+    transition:.2s;
     box-shadow:0 0 12px rgba(255,0,0,.4);
 }
 
@@ -93,10 +90,9 @@ button:hover{
 }
 
 button:active{
-    transform:scale(0.97);
+    transform:scale(.97);
 }
 
-/* 🔥 CARDS INTERNOS */
 .item{
     background:rgba(0,0,0,.45);
     padding:12px;
@@ -104,7 +100,6 @@ button:active{
     border-radius:12px;
 }
 
-/* ERRO */
 .input-erro{
     border:2px solid red !important;
 }
@@ -117,7 +112,14 @@ button:active{
     margin-bottom:5px;
 }
 
-#painelGerente{display:none}
+#painelGerente{
+    display:none;
+}
+
+.botao-download{
+    margin-top:10px;
+    background:linear-gradient(90deg,#00b300,#006600);
+}
 </style>
 </head>
 
@@ -147,7 +149,9 @@ button:active{
 <input id="cpfcnpj" placeholder="CPF/CNPJ">
 </div>
 
-<div id="erroDuplicado" class="erro-msg">⚠️ Ligação duplicada hoje</div>
+<div id="erroDuplicado" class="erro-msg">
+⚠️ Ligação duplicada hoje
+</div>
 
 <div class="grid-2">
 <select id="atendida">
@@ -175,6 +179,7 @@ button:active{
 <!-- FILTRO -->
 <div class="card">
 <h3>Filtro</h3>
+
 <select id="filtroVendedor" onchange="render()">
 <option value="TODOS">Todos</option>
 <option>Joabe</option>
@@ -182,13 +187,30 @@ button:active{
 <option>Fábio</option>
 <option>Caio Henrique</option>
 </select>
+
 </div>
 
 <button onclick="login()">Painel Gerente</button>
 
+<!-- PAINEL GERENTE -->
 <div id="painelGerente" class="card">
+
 <h3>Painel Gerente</h3>
-<button onclick="logout()">Sair</button>
+
+<button onclick="gerarRelatorio()">
+📊 Gerar Relatório Diário
+</button>
+
+<a id="downloadRelatorio" target="_blank" style="display:none">
+<button class="botao-download">
+⬇️ Baixar Relatório
+</button>
+</a>
+
+<button onclick="logout()">
+Sair
+</button>
+
 </div>
 
 <!-- LISTA -->
@@ -200,19 +222,25 @@ button:active{
 </div>
 
 <script>
-// 🔥 NÃO ALTEREI SUA LÓGICA
 const API="https://script.google.com/macros/s/AKfycbxpj0nN8Hv6F7fAr8CgC9Vp9IQgEYkT6otLUCwJMK-JRty1u0H1EjjBlKBJ3tpw4hxs/exec";
+
 const SENHA="gerentazzo";
 
 let registros=[];
 
-function hoje(){return new Date().toLocaleDateString("pt-BR");}
-function dataBR(d){return new Date(d).toLocaleDateString("pt-BR");}
+function hoje(){
+    return new Date().toLocaleDateString("pt-BR");
+}
+
+function dataBR(d){
+    return new Date(d).toLocaleDateString("pt-BR");
+}
 
 function limparErro(){
     telefone.classList.remove("input-erro");
     erroDuplicado.style.display="none";
 }
+
 telefone.addEventListener("input", limparErro);
 
 function login(){
@@ -221,10 +249,12 @@ function login(){
         painelGerente.style.display="block";
     }
 }
+
 function logout(){
     localStorage.removeItem("gerente");
     painelGerente.style.display="none";
 }
+
 function verificar(){
     if(localStorage.getItem("gerente")==="1"){
         painelGerente.style.display="block";
@@ -232,10 +262,15 @@ function verificar(){
 }
 
 async function registrar(){
+
     const tel=telefone.value.trim();
+
     if(!tel) return;
 
-    const duplicado=registros.some(r=>r.telefone===tel && dataBR(r.data)===hoje());
+    const duplicado=registros.some(r=>
+        r.telefone===tel &&
+        dataBR(r.data)===hoje()
+    );
 
     if(duplicado){
         telefone.classList.add("input-erro");
@@ -259,54 +294,104 @@ async function registrar(){
     });
 
     document.querySelectorAll("input").forEach(i=>i.value="");
+
     carregar();
 }
 
 async function carregar(){
+
     const res=await fetch(API+"?t="+Date.now());
+
     registros=await res.json();
+
     render();
 }
 
 function render(){
 
     const gerente=localStorage.getItem("gerente")==="1";
+
     const filtro=filtroVendedor.value;
 
-    let hojeLista=registros.filter(r=>dataBR(r.data)===hoje());
+    let hojeLista=registros.filter(r=>
+        dataBR(r.data)===hoje()
+    );
+
     if(filtro!=="TODOS"){
-        hojeLista=hojeLista.filter(r=>r.vendedor===filtro);
+        hojeLista=hojeLista.filter(r=>
+            r.vendedor===filtro
+        );
     }
 
     const resumoObj={};
 
     hojeLista.forEach(r=>{
-        if(!resumoObj[r.vendedor]) resumoObj[r.vendedor]={t:0,v:0};
+
+        if(!resumoObj[r.vendedor]){
+            resumoObj[r.vendedor]={t:0,v:0};
+        }
+
         resumoObj[r.vendedor].t++;
-        if(r.converteu==="SIM") resumoObj[r.vendedor].v++;
+
+        if(r.converteu==="SIM"){
+            resumoObj[r.vendedor].v++;
+        }
+
     });
 
     resumo.innerHTML=Object.entries(resumoObj).map(([v,d])=>{
-        const taxa=d.t?((d.v/d.t)*100).toFixed(1):0;
-        return `<div class="item"><b>${v}</b><br>Ligações: ${d.t}<br>Vendas: ${d.v}<br>Conversão: ${taxa}%</div>`;
+
+        const taxa=d.t
+        ?((d.v/d.t)*100).toFixed(1)
+        :0;
+
+        return `
+        <div class="item">
+        <b>${v}</b><br>
+        Ligações: ${d.t}<br>
+        Vendas: ${d.v}<br>
+        Conversão: ${taxa}%
+        </div>
+        `;
     }).join("") || "Sem ligações hoje";
 
     lista.innerHTML=hojeLista.reverse().map(r=>`
+
         <div class="item">
+
         <b>${r.vendedor}</b><br>
+
         📅 ${dataBR(r.data)}<br>
+
         Cliente: ${r.cliente}<br>
+
         Tel: ${r.telefone}<br>
+
         Venda: ${r.converteu}<br>
-        <button onclick="editar(${r.row})">Editar</button>
-        ${gerente?`<button onclick="excluir(${r.row})">Excluir</button>`:""}
-        ${r.editado==="SIM"?"<div style='color:yellow'>EDITADO</div>":""}
+
+        <button onclick="editar(${r.row})">
+        Editar
+        </button>
+
+        ${gerente
+        ?`<button onclick="excluir(${r.row})">Excluir</button>`
+        :""
+        }
+
+        ${r.editado==="SIM"
+        ?"<div style='color:yellow'>EDITADO</div>"
+        :""
+        }
+
         </div>
+
     `).join("") || "Nenhuma ligação hoje";
 }
 
 async function editar(row){
+
     const atual=registros.find(r=>r.row==row);
+
     await fetch(API,{
         method:"POST",
         body:JSON.stringify({
@@ -321,20 +406,58 @@ async function editar(row){
             obs:prompt("Obs:", atual.obs)
         })
     });
+
     carregar();
 }
 
 async function excluir(row){
+
     if(!confirm("Excluir?")) return;
+
     await fetch(API,{
         method:"POST",
-        body:JSON.stringify({action:"excluir",row})
+        body:JSON.stringify({
+            action:"excluir",
+            row
+        })
     });
+
     carregar();
 }
 
+/* 🔥 NOVA FUNÇÃO RELATÓRIO */
+async function gerarRelatorio(){
+
+    const response=await fetch(API,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"gerarRelatorio"
+        })
+    });
+
+    const resultado=await response.json();
+
+    if(resultado.url){
+
+        const link=document.getElementById("downloadRelatorio");
+
+        link.href=resultado.url;
+
+        link.style.display="block";
+
+        alert("Relatório gerado com sucesso");
+
+    }else{
+
+        alert("Erro ao gerar relatório");
+
+    }
+}
+
 setInterval(carregar,3000);
+
 verificar();
+
 carregar();
 </script>
 
